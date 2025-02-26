@@ -52,8 +52,6 @@ const multer = require('multer');
 
 const upload = require('../middlewares/upload'); // Adjust the path if necessary
 
-router.param('userId', userById);
-
 // Register routes
 router.put('/randomVisibility', [requireSignin], updateRandomVisibility);
 router.put('/ageVisibility', [requireSignin, withAuthUser], updateAgeVisibility);
@@ -185,5 +183,6 @@ router.get('/extract/:userId', requireSignin, isAdmin, async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
+router.param('userId', userById);
 
 module.exports = router;

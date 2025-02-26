@@ -1,62 +1,51 @@
 const Response = require("../controllers/Response");
 const User = require("../models/User");
-const mongoose = require('mongoose');
 
 
 exports.userById = async (req, res, next, id) => {
     try {
-        console.log(`userById: Looking for user with ID: ${id}`); // Log the incoming user ID
-        console.log('req.auth:', req.auth); // Log req.auth
-        console.log('req.authUser:', req.authUser); // Log req.authUser
+        console.log(`🔹 userById middleware triggered`);
+        console.log(`🔹 Looking for user with ID: ${id}`);
 
-        let userId = req.auth && req.auth._id;
-        console.log('userId:', userId); // Log req.auth
+        let userId = id;
 
-        // Handle the "me" case
-        if (userId === 'me') {
+        // ✅ Handle "me" case using authenticated user's ID
+        if (id === "me") {
             if (!req.authUser || !req.authUser._id) {
-                console.error('Unauthorized: No authenticated user found');
-                return Response.sendError(res, 401, 'Unauthorized: No authenticated user found');
+                console.error("🚨 Unauthorized: No authenticated user found");
+                return Response.sendError(res, 401, "Unauthorized: No authenticated user found");
             }
-            userId = req.authUser._id; // Use the authenticated user's ID from req.authUser
+            userId = req.authUser._id;
         }
 
-        // Validate the userId
-        if (!mongoose.Types.ObjectId.isValid(userId)) {
-            console.error(`Invalid user ID: ${userId}`);
-            return Response.sendError(res, 400, 'Invalid user ID');
+        // ✅ Validate ObjectId format to prevent MongoDB errors
+        if (!userId || !userId.match(/^[0-9a-fA-F]{24}$/)) {
+            console.error(`🚨 Invalid user ID: ${userId}`);
+            return Response.sendError(res, 400, "Invalid user ID");
         }
 
-        // Fetch user by ID
+        // ✅ Fetch user from the database
         const user = await User.findById(userId);
-
         if (!user) {
-            console.error(`User not found with ID: ${userId}`);
-            return Response.sendError(res, 404, 'User not found');
+            console.error(`🚨 User not found with ID: ${userId}`);
+            return Response.sendError(res, 404, "User not found");
         }
 
-        // Ensure mainAvatar and avatar are set
-        if (!user.mainAvatar) {
-            console.log('Setting default mainAvatar');
-            user.mainAvatar = getDefaultAvatar(user.gender);
-        }
+        // ✅ Ensure mainAvatar and avatar exist
+        user.mainAvatar = user.mainAvatar || getDefaultAvatar(user.gender);
+        user.avatar = user.avatar && user.avatar.length ? user.avatar : [user.mainAvatar];
 
-        if (!user.avatar) {
-            console.log('Setting default avatar');
-            user.avatar = [user.mainAvatar];
-        }
-
-        // Convert subscription._id to string if it exists
+        // ✅ Convert subscription ID to string if present
         if (user.subscription && user.subscription._id) {
             user.subscription._id = user.subscription._id.toString();
         }
 
-        console.log(`User found: ${user._id}`); // Log the found user's ID
+        console.log(`✅ User found: ${user._id}`);
         req.user = user;
         next();
     } catch (err) {
-        console.error(`Error finding user with ID ${id}:`, err);
-        return Response.sendError(res, 500, 'Internal server error');
+        console.error(`❌ Error in userById:`, err);
+        return Response.sendError(res, 500, "Internal server error");
     }
 };
 

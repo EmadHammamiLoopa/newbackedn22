@@ -6,7 +6,6 @@ const { userById, isNotBlocked } = require('../app/middlewares/user')
 const router = express.Router()
 
 
-router.param('userId', userById);  // Apply requireSignin first
 router.get('/permission/:userId', [requireSignin, withAuthUser], sendMessagePermission);
 router.get('/users', [requireSignin, withAuthUser], getUsersMessages);
 router.get('/:userId', [requireSignin, withAuthUser], indexMessages);
@@ -15,5 +14,6 @@ router.delete('/:messageId', [requireSignin, withAuthUser], deleteMessage);
 
 
 
+router.param('userId', userById);  // Apply requireSignin first
 
 module.exports = router
