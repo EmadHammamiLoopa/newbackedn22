@@ -1,19 +1,26 @@
 const Response = require("../controllers/Response");
 const User = require("../models/User");
+const mongoose = require('mongoose');
+
 
 exports.userById = async (req, res, next, id) => {
     try {
         console.log(`userById: Looking for user with ID: ${id}`); // Log the incoming user ID
+        console.log('req.auth:', req.auth); // Log req.auth
+        console.log('req.authUser:', req.authUser); // Log req.authUser
+        console.log('idididididid:', id); // Log req.authUser
+        console.log('_id_id_id_id:', _id); // Log req.authUser
+        console.log('req.authUser._idreq.authUser._idreq.authUser._id:', req.authUser._id); // Log req.authUser
 
         let userId = id;
 
         // Handle the "me" case
         if (id === 'me') {
-            if (!req.auth || !req.auth._id) {
+            if (!req.authUser || !req.authUser._id) {
                 console.error('Unauthorized: No authenticated user found');
                 return Response.sendError(res, 401, 'Unauthorized: No authenticated user found');
             }
-            userId = req.auth._id; // Use the authenticated user's ID
+            userId = req.authUser._id; // Use the authenticated user's ID from req.authUser
         }
 
         // Validate the userId
