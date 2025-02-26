@@ -82,7 +82,7 @@ exports.showChannel = async (req, res) => {
             city: 1,
             user: 1,
             approved: 1,
-            photo: { $concat: ["http://127.0.0.1:3300", "$photo.path"] },
+            photo: { $concat: ["https://newbackedn22.onrender.com", "$photo.path"] },
             enabled: 1,
             reports: 1
         }).populate('reports');

@@ -3,39 +3,55 @@ const User = require("../models/User");
 
 exports.userById = async (req, res, next, id) => {
     try {
-        console.log(`userByIduserByIduserByIduserById`); // Log the incoming user ID
-        console.log(`Looking for user with ID: ${id}`); // Log the incoming user ID
+        console.log(`userById: Looking for user with ID: ${id}`); // Log the incoming user ID
+
+        let userId = id;
+
+        // Handle the "me" case
+        if (id === 'me') {
+            if (!req.auth || !req.auth._id) {
+                console.error('Unauthorized: No authenticated user found');
+                return Response.sendError(res, 401, 'Unauthorized: No authenticated user found');
+            }
+            userId = req.auth._id; // Use the authenticated user's ID
+        }
+
+        // Validate the userId
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            console.error(`Invalid user ID: ${userId}`);
+            return Response.sendError(res, 400, 'Invalid user ID');
+        }
 
         // Fetch user by ID
-        const user = await User.findById(id);
+        const user = await User.findById(userId);
 
         if (!user) {
-            console.error(`User not found with ID: ${id}`); // Log if user is not found
-            return Response.sendError(res, 400, 'User not found');
+            console.error(`User not found with ID: ${userId}`);
+            return Response.sendError(res, 404, 'User not found');
         }
 
         // Ensure mainAvatar and avatar are set
         if (!user.mainAvatar) {
-            console.log(`mainAvatarmainAvatarmainAvatar`); // Log if mainAvatar is missing
+            console.log('Setting default mainAvatar');
             user.mainAvatar = getDefaultAvatar(user.gender);
         }
 
         if (!user.avatar) {
+            console.log('Setting default avatar');
             user.avatar = [user.mainAvatar];
-            console.log(`mainAvatarmainAvatarmainAvaeeeeeeeeeeetar`); // Log if avatar is missing
         }
 
+        // Convert subscription._id to string if it exists
         if (user.subscription && user.subscription._id) {
             user.subscription._id = user.subscription._id.toString();
-          }
-          
+        }
 
-        console.log(`User found: ${user}`); // Log the found user
+        console.log(`User found: ${user._id}`); // Log the found user's ID
         req.user = user;
         next();
     } catch (err) {
-        console.error(`Error finding user with ID ${id}:`, err); // Log any error during the lookup
-        return Response.sendError(res, 400, 'User not found');
+        console.error(`Error finding user with ID ${id}:`, err);
+        return Response.sendError(res, 500, 'Internal server error');
     }
 };
 

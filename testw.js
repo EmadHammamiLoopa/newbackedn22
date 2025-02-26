@@ -23,7 +23,7 @@ const revertAvatarsForAllUsers = async () => {
               $replaceOne: {
                 input: "$mainAvatar",
                 find: "https://project-9aw8.onrender.com/",
-                replacement: "http://127.0.0.1:3300/"
+                replacement: "https://newbackedn22.onrender.com/"
               }
             },
             avatar: {
@@ -34,7 +34,7 @@ const revertAvatarsForAllUsers = async () => {
                   $replaceOne: {
                     input: "$$item",
                     find: "https://project-9aw8.onrender.com/",
-                    replacement: "http://127.0.0.1:3300/"
+                    replacement: "https://newbackedn22.onrender.com/"
                   }
                 }
               }

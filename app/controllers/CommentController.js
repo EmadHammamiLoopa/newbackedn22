@@ -38,7 +38,7 @@ exports.showComment = async (req, res) => {
 
         // Check if media is attached and format URL if present
         if (comment.media && comment.media.url) {
-            responseData.mediaUrl = `http://127.0.0.1:3300/${comment.media.url.replace(/\\/g, '/')}`; // Set mediaUrl field with formatted URL
+            responseData.mediaUrl = `https://newbackedn22.onrender.com/${comment.media.url.replace(/\\/g, '/')}`; // Set mediaUrl field with formatted URL
             responseData.mediaExpiryDate = comment.media.expiryDate; // Set mediaExpiryDate field with expiry date
         } else {
             // No media attached
@@ -342,7 +342,7 @@ exports.getAllCommentsForAdmin = async (req, res) => {
                 anonyme: 1,
                 reportsCount: { $size: "$reports" },
                 mediaUrl: {
-                    $cond: { if: { $ne: ["$media.url", null] }, then: { $concat: ["http://127.0.0.1:3300/", { $replaceAll: { input: "$media.url", find: "\\", replacement: "/" } }] }, else: null }
+                    $cond: { if: { $ne: ["$media.url", null] }, then: { $concat: ["https://newbackedn22.onrender.com/", { $replaceAll: { input: "$media.url", find: "\\", replacement: "/" } }] }, else: null }
                 },
                 mediaExpiryDate: "$media.expiryDate",
                 reports: 1, // Include full reports
