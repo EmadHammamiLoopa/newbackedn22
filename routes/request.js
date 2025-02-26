@@ -6,6 +6,8 @@ const { requestById, requestSender, requestReceiver, requestNotExist, sendReques
 const router = express.Router()
 
 // router.get('/', indexRequests)
+router.param('requestId', requestById)
+router.param('userId', userById);  // Apply requireSignin first
 
 router.post('/accept/:requestId', [requireSignin, requestReceiver, isNotBlocked, withAuthUser], acceptRequest)
 router.post('/reject/:requestId', [requireSignin, requestReceiver, isNotBlocked], rejectRequest)
@@ -14,6 +16,5 @@ router.post('/:userId', [requireSignin, withAuthUser, isNotFriend, requestNotExi
 
 router.get('/requests', [requireSignin], requests)
 
-router.param('requestId', requestById)
-router.param('userId', userById);  // Apply requireSignin first
+
 module.exports = router
