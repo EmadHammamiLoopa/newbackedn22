@@ -8,14 +8,12 @@ exports.userById = async (req, res, next, id) => {
         console.log(`userById: Looking for user with ID: ${id}`); // Log the incoming user ID
         console.log('req.auth:', req.auth); // Log req.auth
         console.log('req.authUser:', req.authUser); // Log req.authUser
-        console.log('idididididid:', id); // Log req.authUser
-        console.log('_id_id_id_id:', _id); // Log req.authUser
-        console.log('req.authUser._idreq.authUser._idreq.authUser._id:', req.authUser._id); // Log req.authUser
 
-        let userId = id;
+        let userId = req.auth && req.auth._id;
+        console.log('userId:', userId); // Log req.auth
 
         // Handle the "me" case
-        if (id === 'me') {
+        if (userId === 'me') {
             if (!req.authUser || !req.authUser._id) {
                 console.error('Unauthorized: No authenticated user found');
                 return Response.sendError(res, 401, 'Unauthorized: No authenticated user found');
