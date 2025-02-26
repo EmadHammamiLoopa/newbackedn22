@@ -43,7 +43,11 @@ const { deleteUser } = require('./app/controllers/UserController');
 
 require('dotenv').config();
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: ['https://newbackedn22.onrender.com', 'http://localhost:3300', 'https://localhost'],
+  credentials: true
+}));
+
 app.use(allowAccess);
 
 
