@@ -4,18 +4,23 @@ const User = require("../models/User");
 
 exports.userById = async (req, res, next, id) => {
     try {
-        console.log(`🔹 userById middleware triggered`);
-        console.log(`🔹 Looking for user with ID: ${id}`);
+        console.log("🔹 userById middleware triggered");
+        console.log("🔹 Looking for user with ID:", id);
+        console.log("🔹 req.auth:", req.auth);
+        console.log("🔹 req.authUser:", req.authUser);
 
         let userId = id;
 
-        // ✅ Handle "me" case using authenticated user's ID
+        // ✅ Ensure `req.authUser` is available
+        if (!req.authUser || !req.authUser._id) {
+            console.error("🚨 Unauthorized: No authenticated user found");
+            return Response.sendError(res, 401, "Unauthorized: No authenticated user found");
+        }
+
+        // ✅ Handle "me" case correctly
         if (id === "me") {
-            if (!req.authUser || !req.authUser._id) {
-                console.error("🚨 Unauthorized: No authenticated user found");
-                return Response.sendError(res, 401, "Unauthorized: No authenticated user found");
-            }
-            userId = req.authUser._id;
+            console.log("🔹 'me' detected, replacing with authenticated user ID:", req.authUser._id);
+            userId = req.authUser._id.toString(); // Ensure it's a string
         }
 
         // ✅ Validate ObjectId format to prevent MongoDB errors
@@ -31,20 +36,11 @@ exports.userById = async (req, res, next, id) => {
             return Response.sendError(res, 404, "User not found");
         }
 
-        // ✅ Ensure mainAvatar and avatar exist
-        user.mainAvatar = user.mainAvatar || getDefaultAvatar(user.gender);
-        user.avatar = user.avatar && user.avatar.length ? user.avatar : [user.mainAvatar];
-
-        // ✅ Convert subscription ID to string if present
-        if (user.subscription && user.subscription._id) {
-            user.subscription._id = user.subscription._id.toString();
-        }
-
-        console.log(`✅ User found: ${user._id}`);
         req.user = user;
+        console.log(`✅ Fetched user: ${user._id}`);
         next();
     } catch (err) {
-        console.error(`❌ Error in userById:`, err);
+        console.error("❌ Error in userById:", err);
         return Response.sendError(res, 500, "Internal server error");
     }
 };
