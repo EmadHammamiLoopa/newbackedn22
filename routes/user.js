@@ -48,7 +48,7 @@ const form = require('../app/middlewares/form');
 const { userById, isNotBlocked } = require('../app/middlewares/user');
 const { userUpdateValidator, updateEmailValidator, updatePasswordValidator, userStoreValidator, userDashUpdateValidator } = require('../app/middlewares/validators/userValidator');
 const router = express.Router();
-router.param('userId', userById);
+router.param('userId', requireSignin, withAuthUser,userById);
 
 const multer = require('multer');
 
