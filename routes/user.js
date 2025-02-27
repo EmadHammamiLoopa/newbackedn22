@@ -43,12 +43,13 @@ const {
     updateMainAvatar,
     removeAvatar
 } = require('../app/controllers/UserController');
-router.param('userId', userById);
 const { requireSignin, isAuth, withAuthUser, isAdmin, isSuperAdmin } = require('../app/middlewares/auth');
 const form = require('../app/middlewares/form');
 const { userById, isNotBlocked } = require('../app/middlewares/user');
 const { userUpdateValidator, updateEmailValidator, updatePasswordValidator, userStoreValidator, userDashUpdateValidator } = require('../app/middlewares/validators/userValidator');
 const router = express.Router();
+router.param('userId', userById);
+
 const multer = require('multer');
 
 const upload = require('../middlewares/upload'); // Adjust the path if necessary

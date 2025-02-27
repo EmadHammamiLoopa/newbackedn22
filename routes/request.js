@@ -4,7 +4,8 @@ const { requireSignin, withAuthUser } = require('../app/middlewares/auth')
 const { userById, isNotFriend, isNotBlocked } = require('../app/middlewares/user')
 const { requestById, requestSender, requestReceiver, requestNotExist, sendRequestPermission } = require('../app/middlewares/request')
 const router = express.Router()
-
+router.param('requestId', requestById)
+router.param('userId', userById);  // Apply requireSignin first
 // router.get('/', indexRequests)
 
 router.post('/accept/:requestId', [requireSignin, requestReceiver, isNotBlocked, withAuthUser], acceptRequest)
@@ -14,6 +15,5 @@ router.post('/:userId', [requireSignin, withAuthUser, isNotFriend, requestNotExi
 
 router.get('/requests', [requireSignin], requests)
 
-router.param('requestId', requestById)
-router.param('userId', userById);  // Apply requireSignin first
+
 module.exports = router
