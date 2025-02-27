@@ -6,9 +6,12 @@ exports.userById = async (req, res, next, id) => {
         console.log(`userByIduserByIduserByIduserById`); // Log the incoming user ID
         console.log(`Looking for user with ID: ${id}`); // Log the incoming user ID
 
-        console.log(`🔹 Received userByIduserById: ${req}`);
-        console.log(`🔹 Received userByIduserById: ${res}`);
-
+        console.log("🔹 Received req:", req);
+        console.log("🔹 Received res:", res);
+        
+        console.log("🔹 Request details:", JSON.stringify(req.headers, null, 2));
+        console.log("🔹 Response object exists:", !!res);
+        
 
         console.log("🔹 userById middleware triggered");
         console.log(`🔹 Received userId: ${id}`);
