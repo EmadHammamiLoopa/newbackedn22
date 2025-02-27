@@ -6,6 +6,22 @@ exports.userById = async (req, res, next, id) => {
         console.log(`userByIduserByIduserByIduserById`); // Log the incoming user ID
         console.log(`Looking for user with ID: ${id}`); // Log the incoming user ID
 
+        console.log(`🔹 Received userByIduserById: ${req}`);
+        console.log(`🔹 Received userByIduserById: ${res}`);
+
+
+        console.log("🔹 userById middleware triggered");
+        console.log(`🔹 Received userId: ${id}`);
+
+        // ✅ Ensure req.auth exists before using it
+        if (id === "me") {
+            if (!req.auth || !req.auth._id) {
+                console.error("🚨 Unauthorized: No authenticated user found");
+                return res.status(401).json({ error: "Unauthorized: Authentication required" });
+            }
+            id = req.auth._id; // Replace "me" with the actual user ID
+        }
+
         // Fetch user by ID
         const user = await User.findById(id);
 
