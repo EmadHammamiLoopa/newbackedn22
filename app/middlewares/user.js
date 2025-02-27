@@ -6,19 +6,6 @@ exports.userById = async (req, res, next, id) => {
         console.log(`userByIduserByIduserByIduserById`); // Log the incoming user ID
         console.log(`Looking for user with ID: ${id}`); // Log the incoming user ID
 
-        console.log("🔹 Request Headers:", JSON.stringify(req.headers, null, 2));
-        console.log("🔹 Request Params:", req.params);
-        
-
-        // ✅ Ensure req.auth exists before using it
-        if (id === "me") {
-            if (!req.auth || !req.auth._id) {
-                console.error("🚨 Unauthorized: No authenticated user found");
-                return res.status(401).json({ error: "Unauthorized: Authentication required" });
-            }
-            id = req.auth._id; // Replace "me" with the actual user ID
-        }
-
         // Fetch user by ID
         const user = await User.findById(id);
 
@@ -74,8 +61,7 @@ exports.isNotFriend = (req, res, next) => {
 exports.isNotBlocked = async (req, res, next) => {
     try {
         const user = req.user;
-        console.log(`userByIduserBuseruseruseryIduserByIduserById`); // Log the incoming user ID
-        console.log(`Lookinguseruseruser for user with ID: ${user}`); // Log the incoming user ID
+
         // Find the authenticated user using async/await
         const authUser = await User.findOne({ _id: req.auth._id });
 
