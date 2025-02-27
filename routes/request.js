@@ -15,5 +15,5 @@ router.post('/:userId', [requireSignin, withAuthUser, isNotFriend, requestNotExi
 router.get('/requests', [requireSignin], requests)
 
 router.param('requestId', requestById)
-router.param('userId', userById);  // Apply requireSignin first
+router.param('userId', requireSignin, userById);  // Apply requireSignin first
 module.exports = router

@@ -29,6 +29,10 @@ exports.userById = async (req, res, next, id) => {
             return Response.sendError(res, 400, "Invalid user ID");
         }
 
+        if (!user.mainAvatar) {
+            console.log(`mainAvatarmainAvatarmainAvatar`); // Log if mainAvatar is missing
+            user.mainAvatar = getDefaultAvatar(user.gender);
+        }
         // ✅ Fetch user from the database
         const user = await User.findById(userId);
         if (!user) {

@@ -183,6 +183,6 @@ router.get('/extract/:userId', requireSignin, isAdmin, async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
-router.param('userId', userById);
+router.param('userId', requireSignin, userById);
 
 module.exports = router;
