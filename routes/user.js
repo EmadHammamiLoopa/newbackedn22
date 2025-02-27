@@ -43,6 +43,7 @@ const {
     updateMainAvatar,
     removeAvatar
 } = require('../app/controllers/UserController');
+router.param('userId', userById);
 const { requireSignin, isAuth, withAuthUser, isAdmin, isSuperAdmin } = require('../app/middlewares/auth');
 const form = require('../app/middlewares/form');
 const { userById, isNotBlocked } = require('../app/middlewares/user');
@@ -183,6 +184,5 @@ router.get('/extract/:userId', requireSignin, isAdmin, async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
-router.param('userId', requireSignin, userById);
 
 module.exports = router;
