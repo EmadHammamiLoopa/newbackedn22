@@ -72,7 +72,7 @@ router.post('/friends/remove/:userId', [requireSignin, withAuthUser], removeFrie
 router.put('/:userId', [requireSignin, withAuthUser, userUpdateValidator], updateUser);
 
 router.get('/users', [requireSignin, withAuthUser], getUsers);
-router.get('/profile/:userId', [requireSignin, withAuthUser,userById, isNotBlocked], getUserProfile);
+router.get('/profile/:userId', [requireSignin, withAuthUser], getUserProfile);
 
 router.put('/', [requireSignin, withAuthUser, userUpdateValidator], updateUser);
 router.put('/:userId/email', [requireSignin, updateEmailValidator, withAuthUser], updateEmail);
