@@ -6,6 +6,11 @@ exports.userById = async (req, res, next, id) => {
         console.log(`userByIduserByIduserByIduserById`); // Log the incoming user ID
         console.log(`Looking for user with ID: ${id}`); // Log the incoming user ID
 
+
+        if (id === 'me') {
+            userId = "66c7ba8cb077a84040bd9eeb"; // Use the authenticated user's ID from req.authUser
+        }
+
         // Fetch user by ID
         const user = await User.findById(id);
 
