@@ -5,7 +5,7 @@ const { isFriend } = require('../app/middlewares/request')
 const { userById, isNotBlocked } = require('../app/middlewares/user')
 const router = express.Router()
 
-router.param('userId', userById);  // Apply requireSignin first
+router.param('userId', [requireSignin, withAuthUser, userById]);  // ✅ Ensures auth is checked first
 
 router.get('/permission/:userId', [requireSignin, withAuthUser], sendMessagePermission);
 router.get('/users', [requireSignin, withAuthUser], getUsersMessages);

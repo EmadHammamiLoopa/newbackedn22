@@ -49,7 +49,7 @@ const form = require('../app/middlewares/form');
 const { userById, isNotBlocked } = require('../app/middlewares/user');
 const { userUpdateValidator, updateEmailValidator, updatePasswordValidator, userStoreValidator, userDashUpdateValidator } = require('../app/middlewares/validators/userValidator');
 const multer = require('multer');
-router.param('userId', userById);
+router.param('userId', [requireSignin, withAuthUser, userById]);  // ✅ Ensures auth is checked first
 
 const upload = require('../middlewares/upload'); // Adjust the path if necessary
 
