@@ -60,31 +60,37 @@ exports.isSuperAdmin = (req, res, next) => {
 };
 
 exports.withAuthUser = async (req, res, next) => {
+    console.log('withAuthUser middleware: Request headers:', req.headers);
+
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return Response.sendError(res, 401, 'Unauthorized: No token provided');
+    }
+
+    const token = authHeader.split(' ')[1];
+    console.log('Token from Authorization header:', token);
+
     try {
-        console.log('withAuthUser middleware: Request headers:', req.headers);
-        const userId = req.auth && req.auth._id;
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.auth = decoded;
 
-        if (!userId) {
-            return Response.sendError(res, 401, 'Unauthorized: No user ID found in token');
+        if (!req.auth._id) {
+            console.error('Token does not contain _id:', decoded);
+            return Response.sendError(res, 400, 'Invalid token structure');
         }
 
-        console.log('withAuthUser: User ID from token:', userId); // Log the user ID from the token
-
-        // Fetch user by ID
-        const user = await User.findById(userId);
-        console.log('User status:', user.enabled); // Log enabled status
-
+        const user = await User.findById(req.auth._id);
         if (!user) {
-            console.log('withAuthUser error: User not found');
-            return Response.sendError(res, 404, 'User not found');
+            return Response.sendError(res, 401, 'You are not signed in');
         }
 
-        req.authUser = user; // Attach the found user to req.authUser
-        console.log('withAuthUser: Authenticated user:', user); // Log the found user
-        next();
+        req.authUser = user;
+        next(); // Ensure this is called after everything succeeds
     } catch (err) {
-        console.log('withAuthUser error:', err);
-        return Response.sendError(res, 404, 'User not found');
+        console.error('Token verification failed:', err);
+        return Response.sendError(res, 401, 'Unauthorized: Invalid token');
     }
 };
+
 

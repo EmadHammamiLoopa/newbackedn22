@@ -1,47 +1,46 @@
 const Response = require("../controllers/Response");
 const User = require("../models/User");
 
-exports.userById = async (req, res, next, id) => {
-    try {
-        console.log(`Looking for user with ID: ${id}`); // Log the incoming user ID
+exports.userById = (req, res, next, id) => {
+    console.log('--- userById Middleware ---');
+    console.log(`Initial received user ID: ${id}`);
+    console.log('Received req.auth:', req.auth);  // Log req.auth for debugging
 
-        // If 'me' is passed, use the authenticated user's ID
-        if (id === 'me') {
-            id = "66c7ba8cb077a84040bd9eeb"; // Replace with authenticated user's ID
+    if (id === 'me') {
+        if (!req.auth || !req.auth._id) {
+            console.error('No auth object found or user not authenticated!');
+            return Response.sendError(res, 400, 'Authentication error: User not authenticated');
         }
 
-        // Fetch user by ID
-        const user = await User.findById(id);
+        console.log(`Replacing 'me' with authenticated user's ID: ${req.auth._id}`);
+        id = req.auth._id;
+    }
 
-        if (!user) {
-            console.error(`User not found with ID: ${id}`); // Log if user is not found
+    console.log(`Looking for user with ID: ${id}`);
+
+    // Find the user by ID
+    User.findById(id, (err, user) => {
+        if (err) {
+            console.error(`Error finding user with ID ${id}:`, err);
             return Response.sendError(res, 400, 'User not found');
         }
 
-        // Ensure mainAvatar is set
+        if (!user) {
+            console.error(`User not found with ID: ${id}`);
+            return Response.sendError(res, 400, 'User not found');
+        }
+
         if (!user.mainAvatar) {
-            console.log(`Setting default mainAvatar`); 
             user.mainAvatar = getDefaultAvatar(user.gender);
         }
-
-        // Ensure avatar array is set
         if (!user.avatar || user.avatar.length === 0) {
             user.avatar = [user.mainAvatar];
-            console.log(`Setting default avatar array`);
         }
 
-        // Convert subscription ID to string if present
-        if (user.subscription && user.subscription._id) {
-            user.subscription._id = user.subscription._id.toString();
-        }
-
-        console.log(`User found:`, user); // Log the found user
+        console.log(`User found: ${JSON.stringify(user)}`);
         req.user = user;
         next();
-    } catch (err) {
-        console.error(`Error finding user with ID ${id}:`, err); // Log any error during the lookup
-        return Response.sendError(res, 400, 'User not found');
-    }
+    });
 };
 
 
