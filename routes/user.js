@@ -12,7 +12,7 @@ const Product = require("../app/models//Product");
 const Job = require("../app/models//Job");
 const Service = require("../app/models//Service");
 const Subscription = require('../app/models/Subscription'); // Adjust the path to your Subscription model
-router.param('userId', userById);
+const router = express.Router();
 
 const {
     allUsers,
@@ -48,8 +48,8 @@ const { requireSignin, isAuth, withAuthUser, isAdmin, isSuperAdmin } = require('
 const form = require('../app/middlewares/form');
 const { userById, isNotBlocked } = require('../app/middlewares/user');
 const { userUpdateValidator, updateEmailValidator, updatePasswordValidator, userStoreValidator, userDashUpdateValidator } = require('../app/middlewares/validators/userValidator');
-const router = express.Router();
 const multer = require('multer');
+router.param('userId', userById);
 
 const upload = require('../middlewares/upload'); // Adjust the path if necessary
 
