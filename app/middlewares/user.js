@@ -12,20 +12,19 @@ exports.userById = async (req, res, next, id) => {
         }
 
         if (!user.mainAvatar) {
-            console.log(`mainAvatarmainAvatarmainAvatar`);
+            console.log(`Assigning default avatar based on gender`);
             user.mainAvatar = getDefaultAvatar(user.gender);
         }
 
         if (!user.avatar) {
             user.avatar = [user.mainAvatar];
-            console.log(`mainAvatarmainAvatarmainAvaeeeeeeeeeeetar`);
         }
 
         if (user.subscription && user.subscription._id) {
             user.subscription._id = user.subscription._id.toString();
         }
 
-        console.log(`User found: ${user}`);
+        console.log(`User found:`, user);
         req.user = user;
         next();
     } catch (err) {
@@ -33,6 +32,7 @@ exports.userById = async (req, res, next, id) => {
         return Response.sendError(res, 500, 'Server error');
     }
 };
+
 
 
 function getDefaultAvatar(gender) {

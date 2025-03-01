@@ -12,6 +12,7 @@ const Product = require("../app/models//Product");
 const Job = require("../app/models//Job");
 const Service = require("../app/models//Service");
 const Subscription = require('../app/models/Subscription'); // Adjust the path to your Subscription model
+router.param('userId', userById);
 
 const {
     allUsers,
@@ -183,6 +184,5 @@ router.get('/extract/:userId', requireSignin, isAdmin, async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
-router.param('userId', userById);
 
 module.exports = router;
