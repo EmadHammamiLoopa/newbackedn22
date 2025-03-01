@@ -1,48 +1,38 @@
 const Response = require("../controllers/Response");
 const User = require("../models/User");
 
-exports.userById = (req, res, next, id) => {
-    console.log('--- userById Middleware ---');
-    console.log(`Initial received user ID: ${id}`);
-    console.log('Received req.auth:', req.auth);  // Log req.auth for debugging
+exports.userById = async (req, res, next, id) => {
+    try {
+        console.log(`Looking for user with ID: ${id}`);
 
-    if (id === 'me') {
-        if (!req.auth || !req.auth._id) {
-            console.error('No auth object found or user not authenticated!');
-            return Response.sendError(res, 400, 'Authentication error: User not authenticated');
-        }
-
-        console.log(`Replacing 'me' with authenticated user's ID: ${req.auth._id}`);
-        id = req.auth._id;
-    }
-
-    console.log(`Looking for user with ID: ${id}`);
-
-    // Find the user by ID
-    User.findById(id, (err, user) => {
-        if (err) {
-            console.error(`Error finding user with ID ${id}:`, err);
-            return Response.sendError(res, 400, 'User not found');
-        }
-
+        const user = await User.findById(id);
         if (!user) {
             console.error(`User not found with ID: ${id}`);
             return Response.sendError(res, 400, 'User not found');
         }
 
         if (!user.mainAvatar) {
+            console.log(`mainAvatarmainAvatarmainAvatar`);
             user.mainAvatar = getDefaultAvatar(user.gender);
         }
-        if (!user.avatar || user.avatar.length === 0) {
+
+        if (!user.avatar) {
             user.avatar = [user.mainAvatar];
+            console.log(`mainAvatarmainAvatarmainAvaeeeeeeeeeeetar`);
         }
 
-        console.log(`User found: ${JSON.stringify(user)}`);
+        if (user.subscription && user.subscription._id) {
+            user.subscription._id = user.subscription._id.toString();
+        }
+
+        console.log(`User found: ${user}`);
         req.user = user;
         next();
-    });
+    } catch (err) {
+        console.error(`Error finding user with ID ${id}:`, err);
+        return Response.sendError(res, 500, 'Server error');
+    }
 };
-
 
 
 function getDefaultAvatar(gender) {
