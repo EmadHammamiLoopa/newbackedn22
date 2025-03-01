@@ -3,12 +3,11 @@ const User = require("../models/User");
 
 exports.userById = async (req, res, next, id) => {
     try {
-        console.log(`userByIduserByIduserByIduserById`); // Log the incoming user ID
         console.log(`Looking for user with ID: ${id}`); // Log the incoming user ID
 
-
+        // If 'me' is passed, use the authenticated user's ID
         if (id === 'me') {
-            userId = "66c7ba8cb077a84040bd9eeb"; // Use the authenticated user's ID from req.authUser
+            id = "66c7ba8cb077a84040bd9eeb"; // Replace with authenticated user's ID
         }
 
         // Fetch user by ID
@@ -19,23 +18,24 @@ exports.userById = async (req, res, next, id) => {
             return Response.sendError(res, 400, 'User not found');
         }
 
-        // Ensure mainAvatar and avatar are set
+        // Ensure mainAvatar is set
         if (!user.mainAvatar) {
-            console.log(`mainAvatarmainAvatarmainAvatar`); // Log if mainAvatar is missing
+            console.log(`Setting default mainAvatar`); 
             user.mainAvatar = getDefaultAvatar(user.gender);
         }
 
-        if (!user.avatar) {
+        // Ensure avatar array is set
+        if (!user.avatar || user.avatar.length === 0) {
             user.avatar = [user.mainAvatar];
-            console.log(`mainAvatarmainAvatarmainAvaeeeeeeeeeeetar`); // Log if avatar is missing
+            console.log(`Setting default avatar array`);
         }
 
+        // Convert subscription ID to string if present
         if (user.subscription && user.subscription._id) {
             user.subscription._id = user.subscription._id.toString();
-          }
-          
+        }
 
-        console.log(`User found: ${user}`); // Log the found user
+        console.log(`User found:`, user); // Log the found user
         req.user = user;
         next();
     } catch (err) {
@@ -43,6 +43,7 @@ exports.userById = async (req, res, next, id) => {
         return Response.sendError(res, 400, 'User not found');
     }
 };
+
 
 
 function getDefaultAvatar(gender) {
