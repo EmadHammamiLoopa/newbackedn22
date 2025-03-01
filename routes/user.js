@@ -49,6 +49,7 @@ const { userById, isNotBlocked } = require('../app/middlewares/user');
 const { userUpdateValidator, updateEmailValidator, updatePasswordValidator, userStoreValidator, userDashUpdateValidator } = require('../app/middlewares/validators/userValidator');
 const router = express.Router();
 const multer = require('multer');
+router.param('userId', userById);
 
 const upload = require('../middlewares/upload'); // Adjust the path if necessary
 
@@ -71,7 +72,7 @@ router.post('/friends/remove/:userId', [requireSignin, withAuthUser], removeFrie
 router.put('/:userId', [requireSignin, withAuthUser, userUpdateValidator], updateUser);
 
 router.get('/users', [requireSignin, withAuthUser], getUsers);
-router.get('/profile/:userId', [requireSignin, withAuthUser, isNotBlocked], getUserProfile);
+router.get('/profile/:userId', [requireSignin, withAuthUser,userById, isNotBlocked], getUserProfile);
 
 router.put('/', [requireSignin, withAuthUser, userUpdateValidator], updateUser);
 router.put('/:userId/email', [requireSignin, updateEmailValidator, withAuthUser], updateEmail);
@@ -183,6 +184,5 @@ router.get('/extract/:userId', requireSignin, isAdmin, async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
-router.param('userId', userById);
 
 module.exports = router;
