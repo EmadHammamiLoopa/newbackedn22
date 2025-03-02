@@ -3,36 +3,41 @@ const User = require("../models/User");
 
 exports.userById = async (req, res, next, id) => {
     try {
-        console.log(`Looking for user with ID: ${id}`);
+        console.log(`userByIduserByIduserByIduserById`); // Log the incoming user ID
+        console.log(`Looking for user with ID: ${id}`); // Log the incoming user ID
 
+        // Fetch user by ID
         const user = await User.findById(id);
+
         if (!user) {
-            console.error(`User not found with ID: ${id}`);
+            console.error(`User not found with ID: ${id}`); // Log if user is not found
             return Response.sendError(res, 400, 'User not found');
         }
 
+        // Ensure mainAvatar and avatar are set
         if (!user.mainAvatar) {
-            console.log(`Assigning default avatar based on gender`);
+            console.log(`mainAvatarmainAvatarmainAvatar`); // Log if mainAvatar is missing
             user.mainAvatar = getDefaultAvatar(user.gender);
         }
 
         if (!user.avatar) {
             user.avatar = [user.mainAvatar];
+            console.log(`mainAvatarmainAvatarmainAvaeeeeeeeeeeetar`); // Log if avatar is missing
         }
 
         if (user.subscription && user.subscription._id) {
             user.subscription._id = user.subscription._id.toString();
-        }
+          }
+          
 
-        console.log(`User found:`, user);
+        console.log(`User found: ${user}`); // Log the found user
         req.user = user;
         next();
     } catch (err) {
-        console.error(`Error finding user with ID ${id}:`, err);
-        return Response.sendError(res, 500, 'Server error');
+        console.error(`Error finding user with ID ${id}:`, err); // Log any error during the lookup
+        return Response.sendError(res, 400, 'User not found');
     }
 };
-
 
 
 function getDefaultAvatar(gender) {

@@ -12,7 +12,6 @@ const Product = require("../app/models//Product");
 const Job = require("../app/models//Job");
 const Service = require("../app/models//Service");
 const Subscription = require('../app/models/Subscription'); // Adjust the path to your Subscription model
-const router = express.Router();
 
 const {
     allUsers,
@@ -48,29 +47,8 @@ const { requireSignin, isAuth, withAuthUser, isAdmin, isSuperAdmin } = require('
 const form = require('../app/middlewares/form');
 const { userById, isNotBlocked } = require('../app/middlewares/user');
 const { userUpdateValidator, updateEmailValidator, updatePasswordValidator, userStoreValidator, userDashUpdateValidator } = require('../app/middlewares/validators/userValidator');
+const router = express.Router();
 const multer = require('multer');
-router.param('userId', async (req, res, next, id) => {
-    console.log(`🔍 Looking for user with ID: ${id}`);
-
-    if (id === "me" && req.auth && req.auth._id) {
-        console.log(`🔄 Replacing "me" with authenticated user ID: ${req.auth._id}`);
-        id = req.auth._id;
-    }
-
-    try {
-        const user = await User.findById(id);
-        if (!user) {
-            console.error(`❌ User not found with ID: ${id}`);
-            return Response.sendError(res, 400, 'User not found');
-        }
-
-        req.user = user; // Attach user to request
-        next();
-    } catch (err) {
-        console.error(`❌ Error finding user with ID ${id}:`, err);
-        return Response.sendError(res, 500, 'Server error');
-    }
-});
 
 const upload = require('../middlewares/upload'); // Adjust the path if necessary
 
@@ -205,5 +183,6 @@ router.get('/extract/:userId', requireSignin, isAdmin, async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
+router.param('userId', userById);
 
 module.exports = router;
