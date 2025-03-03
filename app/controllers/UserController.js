@@ -688,12 +688,14 @@ exports.follow = async(req, res) => {
 
     await user.save()
     await authUser.save()
+    const chatId = [msg.from, msg.to].sort().join('-'); // Generate a unique chat ID
 
     if(followed)
-        sendNotification({en: req.authUser.firstName + ' ' + req.authUser.lastName}, {en: 'started following you'}, {
-            type: 'follow-user',
-            link: '/tabs/profile/display/' + user._id
-        }, [], [user._id])
+    sendNotification({ en: user.firstName + ' ' + user.lastName }, { en: msg.text }, {
+        type: 'message',
+        link: `/messages/chat/${chatId}`
+    }, [], [msg.to]);
+    
 
     return Response.sendResponse(res, followed, followed ? 'followed' : 'unfollowed')
 }

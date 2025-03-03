@@ -116,14 +116,16 @@ exports.adminCheck = (req) => {
 
 // ['Subscribed Users'],
 
-const sendNotification = async (userIds, message, senderName) => {
+const sendNotification = async (userIds, message, senderName, fromUserId) => {
+    const chatId = `${fromUserId}`; // Dynamic Chat ID based on sender
+
     const notificationPayload = {
-        app_id: '3b993591-823b-4f45-94b0-c2d0f7d0f6d8', // Replace with your OneSignal App ID
-        headings: { en: senderName }, // Corrected structure
-        contents: { en: message }, // Corrected structure
+        app_id: '3b993591-823b-4f45-94b0-c2d0f7d0f6d8', // Your OneSignal App ID
+        headings: { en: String(senderName) }, // Ensure string
+        contents: { en: String(message) }, // Ensure string
         included_segments: [],
         include_external_user_ids: userIds,
-        data: { type: 'message', link: '/messages/chat/YOUR_CHAT_ID' } // Replace YOUR_CHAT_ID with dynamic value
+        data: { type: 'message', link: `/messages/chat/${chatId}` } // Dynamic chat ID
     };
 
     try {
@@ -131,7 +133,7 @@ const sendNotification = async (userIds, message, senderName) => {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Basic os_v2_app_homtlemchnhulffqylippuhw3auw4vp7fmtu4xfrujbvrgzb536ngtne6z7hsyjy6r7yjvqpvx26bmpi42pvgguhvzdycwvca6ik3bi' // Replace with your actual REST API Key
+                'Authorization': 'Basic os_v2_app_homtlemchnhulffqylippuhw3auw4vp7fmtu4xfrujbvrgzb536ngtne6z7hsyjy6r7yjvqpvx26bmpi42pvgguhvzdycwvca6ik3bi' // Your OneSignal REST API Key
             },
             body: JSON.stringify(notificationPayload)
         });

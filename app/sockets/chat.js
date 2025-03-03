@@ -80,10 +80,12 @@ module.exports = (io, socket) => {
                 await User.findOneAndUpdate({ _id: msg.to }, { $push: { messagedUsers: msg.from, messages: savedMessage._id } });
     
                 const user = await User.findOne({ _id: msg.from });
+                const chatId = [msg.from, msg.to].sort().join('-'); // Ensures a unique chat ID
                 sendNotification({ en: user.firstName + ' ' + user.lastName }, { en: msg.text }, {
                     type: 'message',
-                    link: '/messages/chat/' + msg.from
+                    link: `/messages/chat/${chatId}`
                 }, [], [msg.to]);
+                
     
             } catch (saveError) {
                 console.error('Error saving message:', saveError);

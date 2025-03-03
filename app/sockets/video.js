@@ -22,10 +22,12 @@ module.exports = (io, socket) => {
     socket.on('calling', (userId, username, callerId) => {
         try {
             console.log('calling socket');
+            const chatId = [callerId, userId].sort().join('-'); // Generate unique chat ID
             sendNotification({ en: username }, { en: ' is calling you' }, {
                 type: 'call',
-                link: '/messages/video/' + callerId + '?answer=true'
+                link: `/messages/video/${chatId}?answer=true`
             }, [], [userId], true);
+            
 
             const toSocketId = userSocketId(io.sockets, userId);
 
