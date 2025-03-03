@@ -1,107 +1,99 @@
 const Message = require("../models/Message");
-const path = require("path");
-const fs = require("fs").promises;  // Use async file operations
-let { connectedUsers, sendNotification, userSocketId } = require("./../helpers");
+const path = require('path');
+const fs = require('fs');
+let { connectedUsers, sendNotification, userSocketId } = require('./../helpers');
 const mongoose = require("mongoose");
 const User = require("../models/User");
 
-let activeUsers = new Map(); // Global active users
-
 module.exports = (io, socket) => {
-    socket.on("connect-user", async (user_id) => {
+    socket.on('disconnect', function() {
+        socket.disconnect();
+        console.log('disconnect');
+        console.log('---------------------');
+        console.log(connectedUsers(io.sockets));
+        console.log(`user disconnected (${Object.keys(connectedUsers(io.sockets)).length} connected)`);
+    });
+
+    socket.on('disconnect-user', function() {
+        socket.disconnect();
+        console.log('---------------------');
+        console.log(connectedUsers(io.sockets));
+        console.log(`user disconnected (${Object.keys(connectedUsers(io.sockets)).length} connected)`);
+    });
+
+    socket.on('connect-user', (user_id) => {
         socket.username = user_id;
-        activeUsers.set(user_id, socket.id);
-        console.log(`User ${user_id} connected. Online users: ${activeUsers.size}`);
-
-        try {
-            const unseenMessages = await Message.find({ to: user_id, seen: false });
-            if (unseenMessages.length > 0) {
-                io.to(socket.id).emit("missedMessages", unseenMessages);
-                await Message.updateMany({ to: user_id, seen: true });
-            }
-        } catch (err) {
-            console.error("Error fetching missed messages:", err);
-        }
+        console.log('---------------------');
+        console.log(connectedUsers(io.sockets));
+        console.log(`user connected (${Object.keys(connectedUsers(io.sockets)).length} connected)`);
     });
 
-    socket.on("disconnect", async () => {
-        if (!socket.username) return;
-
-        activeUsers.delete(socket.username);
-        console.log(`User ${socket.username} went offline`);
-
+    socket.on('send-message', async (msg, image, ind) => {
         try {
-            const user = await User.findById(socket.username);
-            if (user) {
-                user.setOffline();
-                user.lastSeen = new Date();
-                await user.save();
-            }
-        } catch (err) {
-            console.error("Error setting user offline:", err);
-        }
-    });
-
-    socket.on("getMissedMessages", async ({ userId }) => {
-        try {
-            const missedMessages = await Message.find({ to: userId, seen: false }).sort({ createdAt: -1 }).limit(50);
-            if (missedMessages.length > 0) {
-                socket.emit("missedMessages", missedMessages);
-                await Message.updateMany({ to: userId, seen: true });
-            }
-        } catch (err) {
-            console.error("Error fetching missed messages:", err);
-        }
-    });
-
-    socket.on("send-message", async (msg, image, ind) => {
-        try {
+            socket.username = msg.from;
             if (!msg.text && !image) return;
-
+    
             let photo = undefined;
             if (image) {
-                const photoName = `${msg.from}_${msg.to}_${Date.now()}.png`;
+                const photoName = `${msg.from}_${msg.to}_${new Date().getTime()}.png`;
                 const photoPath = path.join(__dirname, `./../../public/chats/${photoName}`);
-                await fs.writeFile(photoPath, image);  // Use async version
-                photo = { path: `/chats/${photoName}`, type: "png" };
+                fs.writeFileSync(photoPath, image);
+                photo = {
+                    path: `/chats/${photoName}`,
+                    type: 'png'
+                };
             }
-
-            const messageData = new Message({
+    
+            const message = new Message({
                 text: msg.text,
                 from: new mongoose.Types.ObjectId(msg.from),
                 to: new mongoose.Types.ObjectId(msg.to),
                 image: photo,
-                state: "sent",
+                state: 'sent',
                 type: msg.type,
-                productId: msg.type === "product" ? msg.productId : null,
-                seen: false
+                productId: msg.type === 'product' ? msg.productId : null
             });
-
-            await messageData.save();
-
-            const toSocketId = userSocketId(io.sockets, msg.to);
-            if (toSocketId) {
-                io.to(toSocketId).emit("new-message", messageData);
-            } else {
-                console.log(`User ${msg.to} is offline. Message saved.`);
+    
+            console.log('Saving message:', message);
+    
+            try {
+                const savedMessage = await message.save();
+    
+                const fromSocketId = userSocketId(io.sockets, msg.from);
+                const toSocketId = userSocketId(io.sockets, msg.to);
+    
+                if (savedMessage.image && savedMessage.image.path) {
+                    savedMessage.image.path = process.env.BASEURL + savedMessage.image.path;
+                }
+    
+                if (fromSocketId) {
+                    io.to(fromSocketId).emit('message-sent', savedMessage, ind);
+                    console.log(`Message sent to sender: ${fromSocketId}`);
+                }
+    
+                if (toSocketId) {
+                    io.to(toSocketId).emit('new-message', savedMessage);
+                    console.log(`Message sent to receiver: ${toSocketId}`);
+                }
+    
+                await User.findOneAndUpdate({ _id: msg.from }, { $push: { messagedUsers: msg.to, messages: savedMessage._id } });
+                await User.findOneAndUpdate({ _id: msg.to }, { $push: { messagedUsers: msg.from, messages: savedMessage._id } });
+    
+                const user = await User.findOne({ _id: msg.from });
+                sendNotification({ en: user.firstName + ' ' + user.lastName }, { en: msg.text }, {
+                    type: 'message',
+                    link: '/messages/chat/' + msg.from
+                }, [], [msg.to]);
+    
+            } catch (saveError) {
+                console.error('Error saving message:', saveError);
+                if (userSocketId(io.sockets, msg.from)) {
+                    io.to(userSocketId(io.sockets, msg.from)).emit('message-not-sent', ind);
+                }
             }
-
-            const fromSocketId = userSocketId(io.sockets, msg.from);
-            if (fromSocketId) {
-                io.to(fromSocketId).emit("message-sent", messageData, ind);
-            }
-
-            await Promise.all([
-                User.findByIdAndUpdate(msg.from, { $push: { messagedUsers: msg.to, messages: messageData._id } }),
-                User.findByIdAndUpdate(msg.to, { $push: { messagedUsers: msg.from, messages: messageData._id } })
-            ]);
-
+    
         } catch (err) {
-            console.error("Error sending message:", err);
-            const fromSocketId = userSocketId(io.sockets, msg.from);
-            if (fromSocketId) {
-                io.to(fromSocketId).emit("message-not-sent", { ind, error: err.message });
-            }
+            console.error('Error in send-message event:', err);
         }
     });
-};
+}

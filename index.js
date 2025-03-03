@@ -166,113 +166,34 @@ listRoutes(app);
 app.use(invalidTokenError);
 app.use(notFoundError);
 
-io.on("connection", (socket) => { // `io.on` is the correct usage
-  console.log(`User connected: ${socket.id}`);
+io.sockets.on('connection', (socket) => {
+  console.log('connection');
+  const userId = socket.handshake.query.userId; // Adjust based on your implementation
 
-  const userId = socket.handshake.query.userId || socket.handshake.auth.userId;
-
-  if (!userId) {
-      console.log("User ID is missing from handshake. Disconnecting socket.");
-      socket.disconnect();
-      return;
-  }
-
-  if (!userId) return socket.disconnect();
-  socket.username = userId;
-  activeUsers.set(userId, socket.id);
-  
-  console.log(`User ${userId} connected. Online users: ${activeUsers.size}`);
-
-  // Send all missed messages immediately
-  (async () => {
-      try {
-          const unseenMessages = await Message.find({ to: userId, seen: false });
-
-          if (unseenMessages.length > 0) {
-              io.to(socket.id).emit("missedMessages", unseenMessages);
-              await Message.updateMany({ to: userId, seen: false }, { seen: true });
-          }
-      } catch (err) {
-          console.error("Error fetching missed messages:", err);
-      }
-  })();
-
-  // Ping Mechanism to Keep Connection Alive
-  const interval = setInterval(() => {
-      if (socket.connected) {
-          socket.emit("ping", { message: "heartbeat" });
-      }
-  }, 10000);
-
-  socket.on("pong", () => {
-      console.log(`Received pong from ${socket.id}`);
-  });
-
-  // Handle Message Sending
-  socket.on("send-message", async (msg, image, ind) => {
-      try {
-          if (!msg.text && !image) return;
-
-          let photo = undefined;
-          if (image) {
-              const photoName = `${msg.from}_${msg.to}_${Date.now()}.png`;
-              const photoPath = path.join(__dirname, `./../../public/chats/${photoName}`);
-              fs.writeFileSync(photoPath, image);
-              photo = { path: `/chats/${photoName}`, type: "png" };
-          }
-
-          const messageData = new Message({
-              text: msg.text,
-              from: new mongoose.Types.ObjectId(msg.from),
-              to: new mongoose.Types.ObjectId(msg.to),
-              image: photo,
-              state: "sent",
-              seen: false
-          });
-
-          await messageData.save();
-
-          const toSocketId = userSocketId(io.sockets, msg.to);
-
-          if (toSocketId) {
-              io.to(toSocketId).emit("new-message", messageData);
-          } else {
-              console.log(`User ${msg.to} is offline. Message saved.`);
-          }
-
-          const fromSocketId = userSocketId(io.sockets, msg.from);
-          if (fromSocketId) {
-              io.to(fromSocketId).emit("message-sent", messageData, ind);
-          }
-      } catch (err) {
-          console.error("Error sending message:", err);
+  // Set user as online when they connect
+  User.findById(userId).then(user => {
+      if (user) {
+          user.setOnline();
       }
   });
 
-  // Handle Disconnection
-  socket.on("disconnect", async () => {
-      clearInterval(interval);
-
-      if (userId) {
-          try {
-              const user = await User.findById(userId);
-              if (user) {
-                  user.setOffline();
-                  user.lastSeen = new Date();
-                  await user.save();
-                  console.log(`User ${userId} went offline`);
-              }
-          } catch (err) {
-              console.error("Error setting user offline:", err);
-          }
-      }
-  });
-
-  require("./app/sockets/chat")(io, socket); // Pass `socket` to chat module
-  require("./app/sockets/video")(io, socket);
+  socket.on('disconnect', async () => {
+    try {
+        const user = await User.findById(userId);
+        if (user) {
+            user.setOffline();
+            user.lastSeen = new Date();
+            await user.save();
+        }
+    } catch (err) {
+        console.error('Error setting user offline:', err);
+    }
 });
 
 
+  require('./app/sockets/chat')(io, socket);
+  require('./app/sockets/video')(io, socket);
+});
 
 // Serve the Cordova application for the browser platform
 app.use(express.static(path.join(__dirname, 'platforms/browser/www')));
