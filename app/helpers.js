@@ -117,18 +117,30 @@ exports.adminCheck = (req) => {
 // ['Subscribed Users'],
 
 const sendNotification = async (userIds, message, senderName, fromUserId) => {
-    // Ensure userIds is always an array
-    const recipientIds = Array.isArray(userIds) ? userIds : [userIds];
+    // Ensure userIds is an array of non-empty strings
+    let recipientIds = Array.isArray(userIds) ? userIds : [userIds];
 
-    // Generate a unique chat ID (sorting ensures consistency)
+    recipientIds = recipientIds
+        .filter(id => id && typeof id === 'string' && id.trim().length > 0) // Remove invalid IDs
+        .map(id => id.trim()); // Ensure no whitespace issues
+
+    // Prevent sending notification if no valid recipients
+    if (recipientIds.length === 0) {
+        console.error('❌ No valid user IDs provided for notification.');
+        return;
+    }
+
+    // Generate a unique chat ID (sorted for consistency)
     const chatId = [fromUserId, recipientIds[0]].sort().join('-');
+
+    console.log('📢 Sending Notification to:', recipientIds);
 
     const notificationPayload = {
         app_id: '3b993591-823b-4f45-94b0-c2d0f7d0f6d8', // Your OneSignal App ID
         headings: { en: String(senderName) || 'New Message' }, // Ensure string with fallback
         contents: { en: String(message) || 'You have a new message' }, // Ensure string with fallback
         included_segments: [], // Empty because we target specific users
-        include_external_user_ids: recipientIds, // Ensures correct format
+        include_external_user_ids: recipientIds, // ✅ Ensures it's a correct array
         data: { type: 'message', link: `/messages/chat/${chatId}` } // Correct chat link
     };
 
@@ -143,9 +155,9 @@ const sendNotification = async (userIds, message, senderName, fromUserId) => {
         });
 
         const data = await response.json();
-        console.log('Notification Response:', data);
+        console.log('✅ Notification Response:', data);
     } catch (error) {
-        console.error('Error sending notification:', error);
+        console.error('❌ Error sending notification:', error);
     }
 };
 
