@@ -131,7 +131,7 @@ const sendNotification = async (userIds, message, senderName) => {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Basic YOUR_REST_API_KEY' // Replace with your OneSignal REST API Key
+                'Authorization': 'Basic os_v2_app_homtlemchnhulffqylippuhw3auw4vp7fmtu4xfrujbvrgzb536ngtne6z7hsyjy6r7yjvqpvx26bmpi42pvgguhvzdycwvca6ik3bi' // Replace with your actual REST API Key
             },
             body: JSON.stringify(notificationPayload)
         });
