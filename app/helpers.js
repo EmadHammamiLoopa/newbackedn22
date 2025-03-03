@@ -116,37 +116,32 @@ exports.adminCheck = (req) => {
 
 // ['Subscribed Users'],
 
-exports.sendNotification = (title, message, data, segments = [], player_ids = []) => {
-    console.log("Sending notification...");
-    
-    const body = {
-        app_id: process.env.ONE_SIGNAL_APP_ID,  // OneSignal App ID
-        headings: { en: title },               // Notification Title
-        contents: { en: message },             // Message Content
-        included_segments: segments,           // Example: ["Subscribed Users"]
-        include_external_user_ids: player_ids, // Target user IDs
-        data,                                  // Additional Data
+const sendNotification = async (userIds, message, senderName) => {
+    const notificationPayload = {
+      app_id: '3b993591-823b-4f45-94b0-c2d0f7d0f6d8',
+      headings: { en: senderName }, // Corrected structure
+      contents: { en: message }, // Corrected structure
+      included_segments: [],
+      include_external_user_ids: userIds,
+      data: { type: 'message', link: '/messages/chat/YOUR_CHAT_ID' }
     };
-
-    console.log("Notification Payload:", body);
-
-    request(
-        {
-            method: "POST",
-            uri: "https://onesignal.com/api/v1/notifications",
-            headers: {
-                "Authorization": `Basic ${process.env.ONE_SIGNAL_REST_KEY}`,  // OneSignal REST API Key
-                "Content-Type": "application/json",
-            },
-            json: true,
-            body,
+  
+    try {
+      const response = await fetch('https://onesignal.com/api/v1/notifications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Basic YOUR_REST_API_KEY'
         },
-        (error, response, responseBody) => {
-            if (error) {
-                console.error("Error sending notification:", error);
-            } else {
-                console.log("Notification Response:", responseBody);
-            }
-        }
-    );
-};
+        body: JSON.stringify(notificationPayload)
+      });
+  
+      const data = await response.json();
+      console.log('Notification Response:', data);
+    } catch (error) {
+      console.error('Error sending notification:', error);
+    }
+  };
+  
+  // Example usage
+  sendNotification(['66c7ba8cb077a84040bd9ef0'], 'hi', 'Whaid Rahmani');
