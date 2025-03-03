@@ -117,15 +117,19 @@ exports.adminCheck = (req) => {
 // ['Subscribed Users'],
 
 const sendNotification = async (userIds, message, senderName, fromUserId) => {
-    const chatId = `${fromUserId}`; // Dynamic Chat ID based on sender
+    // Ensure userIds is always an array
+    const recipientIds = Array.isArray(userIds) ? userIds : [userIds];
+
+    // Generate a unique chat ID (sorting ensures consistency)
+    const chatId = [fromUserId, recipientIds[0]].sort().join('-');
 
     const notificationPayload = {
         app_id: '3b993591-823b-4f45-94b0-c2d0f7d0f6d8', // Your OneSignal App ID
-        headings: { en: String(senderName) }, // Ensure string
-        contents: { en: String(message) }, // Ensure string
-        included_segments: [],
-        include_external_user_ids: userIds,
-        data: { type: 'message', link: `/messages/chat/${chatId}` } // Dynamic chat ID
+        headings: { en: String(senderName) || 'New Message' }, // Ensure string with fallback
+        contents: { en: String(message) || 'You have a new message' }, // Ensure string with fallback
+        included_segments: [], // Empty because we target specific users
+        include_external_user_ids: recipientIds, // Ensures correct format
+        data: { type: 'message', link: `/messages/chat/${chatId}` } // Correct chat link
     };
 
     try {
@@ -147,3 +151,4 @@ const sendNotification = async (userIds, message, senderName, fromUserId) => {
 
 // Export sendNotification
 exports.sendNotification = sendNotification;
+
