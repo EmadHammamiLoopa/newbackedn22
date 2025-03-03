@@ -118,30 +118,30 @@ exports.adminCheck = (req) => {
 
 const sendNotification = async (userIds, message, senderName) => {
     const notificationPayload = {
-      app_id: '3b993591-823b-4f45-94b0-c2d0f7d0f6d8',
-      headings: { en: senderName }, // Corrected structure
-      contents: { en: message }, // Corrected structure
-      included_segments: [],
-      include_external_user_ids: userIds,
-      data: { type: 'message', link: '/messages/chat/YOUR_CHAT_ID' }
+        app_id: '3b993591-823b-4f45-94b0-c2d0f7d0f6d8', // Replace with your OneSignal App ID
+        headings: { en: senderName }, // Corrected structure
+        contents: { en: message }, // Corrected structure
+        included_segments: [],
+        include_external_user_ids: userIds,
+        data: { type: 'message', link: '/messages/chat/YOUR_CHAT_ID' } // Replace YOUR_CHAT_ID with dynamic value
     };
-  
+
     try {
-      const response = await fetch('https://onesignal.com/api/v1/notifications', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Basic YOUR_REST_API_KEY'
-        },
-        body: JSON.stringify(notificationPayload)
-      });
-  
-      const data = await response.json();
-      console.log('Notification Response:', data);
+        const response = await fetch('https://onesignal.com/api/v1/notifications', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Basic YOUR_REST_API_KEY' // Replace with your OneSignal REST API Key
+            },
+            body: JSON.stringify(notificationPayload)
+        });
+
+        const data = await response.json();
+        console.log('Notification Response:', data);
     } catch (error) {
-      console.error('Error sending notification:', error);
+        console.error('Error sending notification:', error);
     }
-  };
-  
-  // Example usage
-  sendNotification(['66c7ba8cb077a84040bd9ef0'], 'hi', 'Whaid Rahmani');
+};
+
+// Export sendNotification
+exports.sendNotification = sendNotification;
