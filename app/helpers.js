@@ -116,38 +116,37 @@ exports.adminCheck = (req) => {
 
 // ['Subscribed Users'],
 
-exports.sendNotification = (title, message, data, segments = [], player_ids = [], voip = false) => {
-    console.log('send notification ')
-    console.log(player_ids)
+exports.sendNotification = (title, message, data, segments = [], player_ids = []) => {
+    console.log("Sending notification...");
     
-    let body = {
-        app_id: process.env.ONE_SIGNAL_APP_ID,
-        headings: title,
-        contents: message,
-        included_segments: segments,
-        include_external_user_ids: player_ids,
-        data
-    }
+    const body = {
+        app_id: process.env.ONE_SIGNAL_APP_ID,  // OneSignal App ID
+        headings: { en: title },               // Notification Title
+        contents: { en: message },             // Message Content
+        included_segments: segments,           // Example: ["Subscribed Users"]
+        include_external_user_ids: player_ids, // Target user IDs
+        data,                                  // Additional Data
+    };
 
-    console.log("--------------------------------------")
-    console.log('send notification')
-    console.log(body)
+    console.log("Notification Payload:", body);
 
     request(
         {
-            method:'POST',
-            uri:'https://onesignal.com/api/v1/notifications',
+            method: "POST",
+            uri: "https://onesignal.com/api/v1/notifications",
             headers: {
-                "authorization": "Basic "+ process.env.ONE_SIGNAL_REST_KEY,
-                "content-type": "application/json"
+                "Authorization": `Basic ${process.env.ONE_SIGNAL_REST_KEY}`,  // OneSignal REST API Key
+                "Content-Type": "application/json",
             },
             json: true,
-            body
+            body,
         },
-        (error, response, body) => {
-            console.log(error)
-            console.log(response)
-            console.log(body)
+        (error, response, responseBody) => {
+            if (error) {
+                console.error("Error sending notification:", error);
+            } else {
+                console.log("Notification Response:", responseBody);
+            }
         }
     );
-}
+};
