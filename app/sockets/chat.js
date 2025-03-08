@@ -38,87 +38,89 @@ module.exports = (io, socket) => {
     
         console.log(`✅ User connected: ${user_id}, Socket ID: ${socket.id}`);
     
-        // Track the socket connection
-        connectedUsers[user_id] = socket.id;
+        // Store the socket ID for the user
+        connectedUsers[user_id] = socket.id; // 🔥 Ensure correct mapping
     
         console.log("🔍 Connected Users List:", connectedUsers);
     });
     
+    
 
     socket.on('send-message', async (msg, image, ind) => {
         try {
-            socket.username = msg.from;
-            if (!msg.text && !image) return;
+            console.log(`📢 WebSocket Event Received: send-message`, msg);
     
-            let photo = undefined;
-            if (image) {
-                const photoName = `${msg.from}_${msg.to}_${new Date().getTime()}.png`;
-                const photoPath = path.join(__dirname, `./../../public/chats/${photoName}`);
-                fs.writeFileSync(photoPath, image);
-                photo = {
-                    path: `/chats/${photoName}`,
-                    type: 'png'
-                };
+            msg.from = msg.from || msg._from;
+            msg.to = msg.to || msg._to;
+            msg.text = msg.text || msg._text;
+    
+            if (!msg || !msg.from || !msg.to || !msg.text) {  // Ensure text exists
+                console.error("❌ Invalid message format! Missing 'from', 'to', or 'text'.", msg);
+                return;
             }
     
-            const message = new Message({
-                text: msg.text,
+            console.log(`📩 Received message from ${msg.from} to ${msg.to}`);
+    
+            const sender = await User.findById(msg.from);
+            const receiver = await User.findById(msg.to);
+            if (!sender || !receiver) {
+                console.error(`❌ Sender or Receiver not found!`);
+                return;
+            }
+    
+            const messageData = {
+                text: msg.text,  // Ensure text is always included
                 from: new mongoose.Types.ObjectId(msg.from),
                 to: new mongoose.Types.ObjectId(msg.to),
-                image: photo,
+                image: null,
                 state: 'sent',
-                type: msg.type,
-                productId: msg.type === 'product' ? msg.productId : null
+                type: msg.type || 'friend',
+                productId: msg.productId || null
+            };
+    
+            if (image && typeof image === 'string' && image.startsWith('data:image')) {
+                const photoName = `${msg.from}_${msg.to}_${new Date().getTime()}.png`;
+                const photoPath = path.join(__dirname, `./../../public/chats/${photoName}`);
+                const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+                fs.writeFileSync(photoPath, Buffer.from(base64Data, 'base64'));
+                messageData.image = { path: `/chats/${photoName}`, type: 'png' };
+            }
+    
+            const message = new Message(messageData);
+            const savedMessage = await message.save().catch(err => console.error("❌ MongoDB Save Error:", err));
+            console.log("✅ Message saved:", savedMessage);
+    
+            // Add the message to the sender's messages array
+            await User.findByIdAndUpdate(msg.from, {
+                $push: { messages: savedMessage._id }
             });
     
-            console.log('Saving message:', message);
+            // Add the message to the receiver's messages array
+            await User.findByIdAndUpdate(msg.to, {
+                $push: { messages: savedMessage._id }
+            });
     
-            try {
-                const savedMessage = await message.save();
+            console.log("✅ Message added to sender and receiver's messages arrays");
     
-                const fromSocketId = userSocketId(io.sockets, msg.from);
-                const toSocketId = connectedUsers[msg.to]; // Use stored socket ID
-                console.log(`🎯 Trying to send message to User: ${msg.to}, Socket ID: ${toSocketId}`);
-
-                if (!toSocketId) {
-                    console.warn(`⚠️ User ${msg.to} is NOT connected. Message will be stored but NOT delivered in real time.`);
-                } else {
-                    io.to(toSocketId).emit('new-message', msg);
-                    console.log(`✅ Message sent to receiver: ${toSocketId}`);
-}
+            const toSocketId = connectedUsers[msg.to];
+            const fromSocketId = connectedUsers[msg.from];
     
-                if (savedMessage.image && savedMessage.image.path) {
-                    savedMessage.image.path = process.env.BASEURL + savedMessage.image.path;
-                }
+            if (toSocketId) {
+                io.to(toSocketId).emit('new-message', savedMessage);
+                console.log(`✅ Sent to receiver: ${toSocketId}`);
+            } else {
+                console.warn(`⚠️ User ${msg.to} is not online. Message saved but not delivered.`);
+            }
     
-                if (fromSocketId) {
-                    io.to(fromSocketId).emit('message-sent', savedMessage, ind);
-                    console.log(`Message sent to sender: ${fromSocketId}`);
-                }
-    
-                if (toSocketId) {
-                    io.to(toSocketId).emit('new-message', savedMessage);
-                    console.log(`Message sent to receiver: ${toSocketId}`);
-                }
-    
-                await User.findOneAndUpdate({ _id: msg.from }, { $push: { messagedUsers: msg.to, messages: savedMessage._id } });
-                await User.findOneAndUpdate({ _id: msg.to }, { $push: { messagedUsers: msg.from, messages: savedMessage._id } });
-    
-                const user = await User.findOne({ _id: msg.from });
-                sendNotification({ en: user.firstName + ' ' + user.lastName }, { en: msg.text }, {
-                    type: 'message',
-                    link: '/messages/chat/' + msg.from
-                }, [], [msg.to]);
-    
-            } catch (saveError) {
-                console.error('Error saving message:', saveError);
-                if (userSocketId(io.sockets, msg.from)) {
-                    io.to(userSocketId(io.sockets, msg.from)).emit('message-not-sent', ind);
-                }
+            if (fromSocketId) {
+                io.to(fromSocketId).emit('message-sent', savedMessage, ind);
+                console.log(`✅ Sent back confirmation to sender: ${fromSocketId}`);
             }
     
         } catch (err) {
-            console.error('Error in send-message event:', err);
+            console.error('❌ Error in send-message event:', err);
         }
     });
+    
+    
 }

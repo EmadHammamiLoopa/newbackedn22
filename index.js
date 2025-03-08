@@ -161,6 +161,8 @@ function listRoutes(app) {
   }
   
 
+
+
 // Log routes
 listRoutes(app);
 app.use(invalidTokenError);
@@ -171,25 +173,42 @@ io.sockets.on('connection', (socket) => {
   const userId = socket.handshake.query.userId; // Adjust based on your implementation
 
   // Set user as online when they connect
-  User.findById(userId).then(user => {
-      if (user) {
-          user.setOnline();
-      }
-  });
+  if (userId) {
+    connectedUsers[userId] = socket.id;  // ✅ Add user to connectedUsers
+    console.log(`✅ User ${userId} added to connectedUsers with socket ID: ${socket.id}`);
 
-  socket.on('disconnect', async () => {
-    try {
-        const user = await User.findById(userId);
+    // Set user as online when they connect
+    User.findById(userId).then(user => {
         if (user) {
-            user.setOffline();
-            user.lastSeen = new Date();
-            await user.save();
+            user.setOnline();
         }
-    } catch (err) {
-        console.error('Error setting user offline:', err);
-    }
+    });
+} else {
+    console.warn("⚠️ No userId provided in handshake query.");
+}
+
+
+  socket.onAny((event, ...args) => {
+    console.log(`📢 WebSocket Event Received: ${event}`, args);
 });
 
+socket.on('disconnect', async () => {
+  try {
+      if (userId && connectedUsers[userId]) {
+          delete connectedUsers[userId];  // ✅ Remove user from connectedUsers
+          console.log(`❌ User ${userId} disconnected and removed from connectedUsers`);
+      }
+
+      const user = await User.findById(userId);
+      if (user) {
+          user.setOffline();
+          user.lastSeen = new Date();
+          await user.save();
+      }
+  } catch (err) {
+      console.error('❌ Error setting user offline:', err);
+  }
+});
 
   require('./app/sockets/chat')(io, socket);
   require('./app/sockets/video')(io, socket);

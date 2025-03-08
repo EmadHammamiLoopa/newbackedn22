@@ -77,24 +77,11 @@ exports.getUsersMessages = async (req, res) => {
 
     try {
         const users = await User.find(filter)
-            .populate({
-                path: 'messages',
-                match: {
-                    $or: [
-                        { to: req.authUser._id },
-                        { from: req.authUser._id },
-                    ],
-                },
-                options: {
-                    sort: { createdAt: -1 },
-                },
-            })
             .select({
                 firstName: 1,
                 lastName: 1,
                 avatar: 1,
                 mainAvatar: 1,
-
                 messages: 1,
                 id: "$_id",
                 online: {
@@ -109,17 +96,31 @@ exports.getUsersMessages = async (req, res) => {
             .limit(limit);
 
         console.log('Users found:', users.length); // Log the number of users found
-        users.forEach(user => {
-            console.log('User:', user._id, 'Messages:', user.messages); // Log user details
-        });
 
-        if (!users || users.length === 0) {
+        // Populate messages for each user
+        const usersWithMessages = await Promise.all(users.map(async (user) => {
+            const messages = await Message.find({
+                $or: [
+                    { from: user._id, to: req.authUser._id },
+                    { from: req.authUser._id, to: user._id }
+                ]
+            }).sort({ createdAt: -1 });
+
+            return {
+                ...user.toObject(),
+                messages,
+            };
+        }));
+
+        console.log('Users with messages:', usersWithMessages); // Log users with messages
+
+        if (!usersWithMessages || usersWithMessages.length === 0) {
             return Response.sendError(res, 400, 'No users found');
         }
 
         const count = await User.countDocuments(filter);
 
-        const usersWithStatus = setOnlineUsers(users);
+        const usersWithStatus = setOnlineUsers(usersWithMessages);
         return Response.sendResponse(res, {
             users: usersWithStatus,
             more: count - limit * (page + 1) > 0,
