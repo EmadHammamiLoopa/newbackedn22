@@ -167,6 +167,7 @@ function listRoutes(app) {
 listRoutes(app);
 app.use(invalidTokenError);
 app.use(notFoundError);
+const connectedUsers = {}; // ✅ Declare connectedUsers as an empty object
 
 io.sockets.on('connection', (socket) => {
   console.log('connection');
@@ -192,23 +193,34 @@ io.sockets.on('connection', (socket) => {
     console.log(`📢 WebSocket Event Received: ${event}`, args);
 });
 
+
 socket.on('disconnect', async () => {
-  try {
-      if (userId && connectedUsers[userId]) {
-          delete connectedUsers[userId];  // ✅ Remove user from connectedUsers
-          console.log(`❌ User ${userId} disconnected and removed from connectedUsers`);
+  console.log(`❌ Disconnected: User ${userId || "Unknown"}, Socket ID: ${socket.id}`);
+
+  // Wait for a short time before marking the user offline (prevents refresh issues)
+  setTimeout(async () => {
+      if (connectedUsers[userId]) {
+          console.log(`🔄 User ${userId} reconnected quickly, skipping offline update.`);
+          return; // The user has already reconnected
       }
 
-      const user = await User.findById(userId);
-      if (user) {
-          user.setOffline();
-          user.lastSeen = new Date();
-          await user.save();
+      try {
+          delete connectedUsers[userId]; // ✅ Remove from active users list
+          console.log(`❌ User ${userId} permanently removed from connectedUsers`);
+
+          const user = await User.findById(userId);
+          if (user) {
+              user.setOffline();
+              user.lastSeen = new Date();
+              await user.save();
+              console.log(`💤 User ${userId} marked as offline.`);
+          }
+      } catch (err) {
+          console.error('❌ Error setting user offline:', err);
       }
-  } catch (err) {
-      console.error('❌ Error setting user offline:', err);
-  }
+  }, 5000); // ✅ Wait 5 seconds before marking offline
 });
+
 
   require('./app/sockets/chat')(io, socket);
   require('./app/sockets/video')(io, socket);

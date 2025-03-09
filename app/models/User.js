@@ -137,11 +137,13 @@ userSchema.methods.setOnline = function() {
 };
 
 // Set user offline
-userSchema.methods.setOffline = function() {
+userSchema.methods.setOffline = async function () {
+    if (!this.online) return; // ✅ Skip if already offline
     this.online = false;
     this.lastSeen = new Date();
-    return this.save();
+    await this.save();
 };
+
 
 // Get default avatar based on gender
 userSchema.methods.getDefaultAvatar = function() {
