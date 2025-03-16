@@ -83,6 +83,26 @@ const peerServer = ExpressPeerServer(http, {
     debug: true
 });
 
+peerServer.on("connection", (client) => {
+  console.log(`✅ New peer connected with ID: ${client.getId()}`);
+
+  const userId = client.getId().split('-')[0]; // Extract userId from PeerJS ID
+  activePeers[userId] = client.getId(); // ✅ Store Peer ID in shared storage
+
+  console.log(`📝 Stored peerId: ${client.getId()} for userId: ${userId}`);
+});
+
+peerServer.on("disconnect", (client) => {
+  console.log(`❌ Peer disconnected: ${client.getId()}`);
+
+  const userId = Object.keys(activePeers).find(key => activePeers[key] === client.getId());
+  if (userId) {
+      delete activePeers[userId];  // ✅ Remove from shared storage
+      console.log(`🗑️ Removed peerId for user: ${userId}`);
+  }
+});
+
+
 schedule.scheduleJob('0 * * * *', removeExpiredMedia);  // Runs every hour
 
 const port = process.env.PORT || 3300;
@@ -167,8 +187,6 @@ function listRoutes(app) {
   }
   
 
-
-
 // Log routes
 listRoutes(app);
 app.use(invalidTokenError);
@@ -199,7 +217,6 @@ io.sockets.on('connection', (socket) => {
     console.log(`📢 WebSocket Event Received: ${event}`, args);
 });
 
-
 socket.on('disconnect', async () => {
   console.log(`❌ Disconnected: User ${userId || "Unknown"}, Socket ID: ${socket.id}`);
 
@@ -226,6 +243,7 @@ socket.on('disconnect', async () => {
       }
   }, 5000); // ✅ Wait 5 seconds before marking offline
 });
+
 
 
   require('./app/sockets/chat')(io, socket);

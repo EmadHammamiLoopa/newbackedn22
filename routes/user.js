@@ -12,6 +12,7 @@ const Product = require("../app/models//Product");
 const Job = require("../app/models//Job");
 const Service = require("../app/models//Service");
 const Subscription = require('../app/models/Subscription'); // Adjust the path to your Subscription model
+const { activePeers } = require('.././app/utils/peerStorage'); // ✅ Use shared storage
 
 const {
     allUsers,
@@ -61,6 +62,72 @@ router.post('/profile-visited', [requireSignin, withAuthUser], profileVisited);
 
 router.get('/all', [requireSignin, isAdmin], allUsers);
 router.post('/', [form, requireSignin, isSuperAdmin, userStoreValidator], storeUser);
+
+// Add PeerJS routes
+
+/**
+ * ✅ Store Peer ID when a user connects
+ */
+router.post('/:userId/peer', (req, res) => {
+    const userId = req.params.userId;
+    const { peerId } = req.body;
+
+    if (!peerId) {
+        return res.status(400).json({ message: "peerId is required." });
+    }
+
+    activePeers[userId] = peerId;
+    console.log(`📝 Stored peerId: ${peerId} for userId: ${userId}`);
+    console.log('📂 Current activePeers:', activePeers);
+
+    res.json({ message: "Peer ID stored successfully." });
+});
+
+/**
+ * ✅ Retrieve Peer ID for a given user
+ */
+/**
+ * ✅ Retrieve Peer ID for a given user
+ */
+router.get('/:userId/peer', (req, res) => {
+    console.log(`🔍 peerpeerpeerpeerpeerpeerpeerpeerpeerpeerpeerpeerpeerpeerpeerpeerpeer`);
+
+    const userId = req.params.userId;
+    const peerId = activePeers[userId] || null;
+
+    console.log(`🔍 Fetching peerId for userId: ${userId} -> peerId: ${peerId}`);
+    console.log('📂 Current activePeers:', activePeers);
+
+    if (!peerId) {
+        return res.status(404).json({ 
+            success: false,
+            message: "User is not online or peerId not found.",
+            userId: userId
+        });
+    }
+
+    res.json({ 
+        success: true,
+        message: "Peer ID retrieved successfully.",
+        userId: userId,
+        peerId: peerId
+    });
+});
+/**
+ * ✅ Remove Peer ID when a user disconnects
+ */
+router.delete('/:userId/peer', (req, res) => {
+    const userId = req.params.userId;
+
+    if (activePeers[userId]) {
+        delete activePeers[userId];
+        console.log(`❌ Removed peerId for userId: ${userId}`);
+        return res.json({ message: "Peer ID removed successfully." });
+    } else {
+        return res.status(404).json({ message: "Peer ID not found." });
+    }
+});
+
 
 router.get('/dash/:userId', [requireSignin, isAdmin], showUserDash);
 router.put('/dash/:userId', [form, requireSignin, isSuperAdmin, userDashUpdateValidator], updateUserDash);
