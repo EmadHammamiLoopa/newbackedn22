@@ -73,44 +73,56 @@ router.post('/:userId/peer', (req, res) => {
     const { peerId } = req.body;
 
     if (!peerId) {
-        return res.status(400).json({ message: "peerId is required." });
-    }
-
-    activePeers[userId] = peerId;
-    console.log(`📝 Stored peerId: ${peerId} for userId: ${userId}`);
-    console.log('📂 Current activePeers:', activePeers);
-
-    res.json({ message: "Peer ID stored successfully." });
-});
-
-/**
- * ✅ Retrieve Peer ID for a given user
- */
-/**
- * ✅ Retrieve Peer ID for a given user
- */
-router.get('/:userId/peer', (req, res) => {
-    console.log(`🔍 peerpeerpeerpeerpeerpeerpeerpeerpeerpeerpeerpeerpeerpeerpeerpeerpeer`);
-
-    const userId = req.params.userId;
-    const peerId = activePeers[userId] || null;
-
-    console.log(`🔍 Fetching peerId for userId: ${userId} -> peerId: ${peerId}`);
-    console.log('📂 Current activePeers:', activePeers);
-
-    if (!peerId) {
-        return res.status(404).json({ 
+        return res.status(400).json({ 
             success: false,
-            message: "User is not online or peerId not found.",
-            userId: userId
+            message: "peerId is required." 
         });
     }
 
+    // Store with timestamp
+    activePeers[userId] = {
+        peerId,
+        lastUpdated: new Date()
+    };
+
+    console.log(`📝 Stored peerId: ${peerId} for userId: ${userId}`);
+    console.log('📂 Current activePeers:', activePeers);
+
+    res.json({ 
+        success: true,
+        message: "Peer ID stored successfully.",
+        userId,
+        peerId
+    });
+});
+
+// ✅ Retrieve Peer ID
+router.get('/:userId/peer', (req, res) => {
+    const userId = req.params.userId;
+    const peerData = activePeers[userId];
+    
+    // Check if peer exists and is recent (within 2 minutes)
+    const isPeerActive = peerData && 
+                        (new Date() - new Date(peerData.lastUpdated)) < 120000;
+
+    if (!isPeerActive) {
+        if (peerData) {
+            console.log(`⌛ Peer ID expired for ${userId}`);
+            delete activePeers[userId]; // Clean up
+        }
+        return res.status(404).json({ 
+            success: false,
+            message: "User is not online or peerId not found.",
+            userId
+        });
+    }
+
+    console.log(`🔍 Serving active peer: ${userId} -> ${peerData.peerId}`);
     res.json({ 
         success: true,
         message: "Peer ID retrieved successfully.",
-        userId: userId,
-        peerId: peerId
+        userId,
+        peerId: peerData.peerId
     });
 });
 /**
