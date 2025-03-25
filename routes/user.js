@@ -99,7 +99,14 @@ router.post('/:userId/peer', (req, res) => {
 
 router.get('/:userId/peer', (req, res) => {
     const userId = req.params.userId;
+
+    // ✅ Print entire peer store for debugging
+    console.log("📦 Current Peer Store:", peerStore.store); // <-- THIS LINE
+
     const peerData = peerStore.get(userId);
+
+    console.log(`📥 Requested userId: ${userId}`);
+    console.log(`📡 Found peer data:`, peerData);
 
     const isPeerActive = peerData &&
         (new Date() - new Date(peerData.lastUpdated)) < 2 * 60 * 1000;
@@ -124,6 +131,7 @@ router.get('/:userId/peer', (req, res) => {
         peerId: peerData.peerId
     });
 });
+
 
 router.delete('/:userId/peer', (req, res) => {
     const userId = req.params.userId;
