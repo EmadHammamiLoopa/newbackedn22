@@ -68,86 +68,119 @@ router.post('/', [form, requireSignin, isSuperAdmin, userStoreValidator], storeU
 /**
  * ✅ Store Peer ID when a user connects
  */
-router.post('/:userId/peer', (req, res) => {
-
-    console.log(`33333333333333333333333333333333userId`);
-
+router.post('/:userId/peer', async (req, res) => {
     const userId = req.params.userId;
     const { peerId } = req.body;
 
-    console.log(`33333333333333333333333333333333userId`,userId);
-    console.log(`33333333333333333333333333333333userId`,peerId);
+    console.log("📥 Incoming peer registration:", { userId, peerId });
 
     if (!peerId) {
-        return res.status(400).json({ 
+        return res.status(400).json({
             success: false,
-            message: "peerId is required." 
+            message: "peerId is required."
         });
     }
 
-    // ✅ Store peer ID with timestamp
-    peerStore.set(userId, peerId);
-    console.log(`📝 Stored peerId: ${peerId} for userId: ${userId}`);
-
-    res.json({ 
-        success: true,
-        message: "Peer ID stored successfully.",
-        userId,
-        peerId
-    });
+    try {
+        await peerStore.set(userId, peerId);
+        console.log(`✅ Stored peerId for ${userId}: ${peerId}`);
+        return res.json({
+            success: true,
+            message: "Peer ID stored successfully.",
+            userId,
+            peerId
+        });
+    } catch (err) {
+        console.error("❌ Error storing peerId:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to store peer ID.",
+            error: err.message
+        });
+    }
 });
 
-router.get('/:userId/peer', (req, res) => {
+
+/**
+ * ✅ Get Peer ID for user
+ */
+router.get('/:userId/peer', async (req, res) => {
     const userId = req.params.userId;
 
-    // ✅ Print entire peer store for debugging
-    console.log("📦 Current Peer Store:", peerStore.store); // <-- THIS LINE
+    try {
+        const peerData = await peerStore.get(userId);
 
-    const peerData = peerStore.get(userId);
+        console.log("📦 Peer lookup:", {
+            userId,
+            peerData
+        });
 
-    console.log(`📥 Requested userId: ${userId}`);
-    console.log(`📡 Found peer data:`, peerData);
+        const isPeerActive = peerData &&
+            (Date.now() - new Date(peerData.lastUpdated).getTime()) < 2 * 60 * 1000;
 
-    const isPeerActive = peerData &&
-        (new Date() - new Date(peerData.lastUpdated)) < 2 * 60 * 1000;
+        if (!isPeerActive) {
+            if (peerData) {
+                console.log(`⌛ Peer ID expired for ${userId}`);
+                await peerStore.delete(userId);
+            }
 
-    if (!isPeerActive) {
-        if (peerData) {
-            console.log(`⌛ Peer ID expired for ${userId}`);
-            peerStore.delete(userId);
+            return res.status(404).json({
+                success: false,
+                message: "User is not online or peerId not found.",
+                userId
+            });
         }
-        return res.status(404).json({ 
+
+        console.log(`✅ Returning peerId for ${userId}: ${peerData.peerId}`);
+        return res.json({
+            success: true,
+            message: "Peer ID retrieved successfully.",
+            userId,
+            peerId: peerData.peerId
+        });
+
+    } catch (err) {
+        console.error("❌ Error retrieving peerId:", err);
+        return res.status(500).json({
             success: false,
-            message: "User is not online or peerId not found.",
+            message: "Failed to retrieve peer ID.",
+            error: err.message
+        });
+    }
+});
+
+
+/**
+ * ✅ Delete Peer ID
+ */
+router.delete('/:userId/peer', async (req, res) => {
+    const userId = req.params.userId;
+
+    try {
+        const peer = await peerStore.get(userId);
+
+        if (!peer) {
+            return res.status(404).json({
+                success: false,
+                message: "Peer ID not found.",
+                userId
+            });
+        }
+
+        await peerStore.delete(userId);
+        console.log(`❌ Removed peerId for userId: ${userId}`);
+        return res.json({
+            success: true,
+            message: "Peer ID removed successfully.",
             userId
         });
-    }
 
-    console.log(`🔍 Serving active peer: ${userId} -> ${peerData.peerId}`);
-    res.json({ 
-        success: true,
-        message: "Peer ID retrieved successfully.",
-        userId,
-        peerId: peerData.peerId
-    });
-});
-
-
-router.delete('/:userId/peer', (req, res) => {
-    const userId = req.params.userId;
-
-    const peer = peerStore.get(userId);
-    if (peer) {
-        peerStore.delete(userId);
-        console.log(`❌ Removed peerId for userId: ${userId}`);
-        return res.json({ 
-            success: true,
-            message: "Peer ID removed successfully." 
-        });
-    } else {
-        return res.status(404).json({ 
+    } catch (err) {
+        console.error("❌ Error deleting peerId:", err);
+        return res.status(500).json({
             success: false,
-            message: "Peer ID not found." 
+            message: "Failed to delete peer ID.",
+            error: err.message
         });
     }
 });

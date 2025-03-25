@@ -1,37 +1,55 @@
-// Persistent storage solution
+const Peer = require('../models/Peer');
+
 class PeerStore {
-    constructor() {
-        this.store = {};
-        this.cleanupInterval = setInterval(() => {
-            this.cleanupExpiredPeers();
-        }, 60000); // Cleanup every minute
+  async set(userId, peerId) {
+    try {
+      await Peer.findOneAndUpdate(
+        { userId },
+        { peerId, lastUpdated: new Date() },
+        { upsert: true, new: true }
+      );
+      console.log(`✅ DB: Stored peerId ${peerId} for userId ${userId}`);
+    } catch (err) {
+      console.error("❌ Failed to store peerId in DB:", err);
     }
+  }
 
-    set(userId, peerId) {
-        this.store[userId] = {
-            peerId,
-            lastUpdated: new Date()
-        };
+  async get(userId) {
+    try {
+      const record = await Peer.findOne({ userId });
+      return record;
+    } catch (err) {
+      console.error("❌ Failed to fetch peerId from DB:", err);
+      return null;
     }
+  }
 
-    get(userId) {
-        return this.store[userId];
+  async delete(userId) {
+    try {
+      await Peer.deleteOne({ userId });
+      console.log(`❌ DB: Deleted peerId for userId ${userId}`);
+    } catch (err) {
+      console.error("❌ Failed to delete peerId from DB:", err);
     }
+  }
 
-    delete(userId) {
-        delete this.store[userId];
+  // Cleanup expired peer records older than 2 minutes
+  async cleanupExpiredPeers() {
+    const expirationTime = new Date(Date.now() - 2 * 60 * 1000);
+    try {
+      const result = await Peer.deleteMany({ lastUpdated: { $lt: expirationTime } });
+      if (result.deletedCount > 0) {
+        console.log(`🧹 Cleaned ${result.deletedCount} expired peers`);
       }
-      
-    cleanupExpiredPeers() {
-        const now = new Date();
-        Object.keys(this.store).forEach(userId => {
-            const peer = this.store[userId];
-            if ((now - new Date(peer.lastUpdated)) > 120000) { // 2 minutes
-                delete this.store[userId];
-                console.log(`🧹 Cleaned up expired peer: ${userId}`);
-            }
-        });
+    } catch (err) {
+      console.error("❌ Failed to clean expired peers from DB:", err);
     }
+  }
+
+  // Optional: Automatically run cleanup every 60 seconds
+  startAutoCleanup() {
+    setInterval(() => this.cleanupExpiredPeers(), 60000);
+  }
 }
 
 module.exports = new PeerStore();
