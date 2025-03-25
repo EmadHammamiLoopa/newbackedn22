@@ -12,7 +12,7 @@ const Product = require("../app/models//Product");
 const Job = require("../app/models//Job");
 const Service = require("../app/models//Service");
 const Subscription = require('../app/models/Subscription'); // Adjust the path to your Subscription model
-const { activePeers } = require('.././app/utils/peerStorage'); // ✅ Use shared storage
+const peerStore = require('.././app/utils/peerStorage');
 
 const {
     allUsers,
@@ -69,8 +69,14 @@ router.post('/', [form, requireSignin, isSuperAdmin, userStoreValidator], storeU
  * ✅ Store Peer ID when a user connects
  */
 router.post('/:userId/peer', (req, res) => {
+
+    console.log(`33333333333333333333333333333333userId`);
+
     const userId = req.params.userId;
     const { peerId } = req.body;
+
+    console.log(`33333333333333333333333333333333userId`,userId);
+    console.log(`33333333333333333333333333333333userId`,peerId);
 
     if (!peerId) {
         return res.status(400).json({ 
@@ -79,14 +85,9 @@ router.post('/:userId/peer', (req, res) => {
         });
     }
 
-    // Store with timestamp
-    activePeers[userId] = {
-        peerId,
-        lastUpdated: new Date()
-    };
-
+    // ✅ Store peer ID with timestamp
+    peerStore.set(userId, peerId);
     console.log(`📝 Stored peerId: ${peerId} for userId: ${userId}`);
-    console.log('📂 Current activePeers:', activePeers);
 
     res.json({ 
         success: true,
@@ -96,19 +97,17 @@ router.post('/:userId/peer', (req, res) => {
     });
 });
 
-// ✅ Retrieve Peer ID
 router.get('/:userId/peer', (req, res) => {
     const userId = req.params.userId;
-    const peerData = activePeers[userId];
-    
-    // Check if peer exists and is recent (within 2 minutes)
-    const isPeerActive = peerData && 
-                        (new Date() - new Date(peerData.lastUpdated)) < 120000;
+    const peerData = peerStore.get(userId);
+
+    const isPeerActive = peerData &&
+        (new Date() - new Date(peerData.lastUpdated)) < 2 * 60 * 1000;
 
     if (!isPeerActive) {
         if (peerData) {
             console.log(`⌛ Peer ID expired for ${userId}`);
-            delete activePeers[userId]; // Clean up
+            peerStore.delete(userId);
         }
         return res.status(404).json({ 
             success: false,
@@ -125,20 +124,26 @@ router.get('/:userId/peer', (req, res) => {
         peerId: peerData.peerId
     });
 });
-/**
- * ✅ Remove Peer ID when a user disconnects
- */
+
 router.delete('/:userId/peer', (req, res) => {
     const userId = req.params.userId;
 
-    if (activePeers[userId]) {
-        delete activePeers[userId];
+    const peer = peerStore.get(userId);
+    if (peer) {
+        peerStore.delete(userId);
         console.log(`❌ Removed peerId for userId: ${userId}`);
-        return res.json({ message: "Peer ID removed successfully." });
+        return res.json({ 
+            success: true,
+            message: "Peer ID removed successfully." 
+        });
     } else {
-        return res.status(404).json({ message: "Peer ID not found." });
+        return res.status(404).json({ 
+            success: false,
+            message: "Peer ID not found." 
+        });
     }
 });
+
 
 
 router.get('/dash/:userId', [requireSignin, isAdmin], showUserDash);

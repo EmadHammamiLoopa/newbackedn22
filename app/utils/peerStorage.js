@@ -18,6 +18,10 @@ class PeerStore {
         return this.store[userId];
     }
 
+    delete(userId) {
+        delete this.store[userId];
+      }
+      
     cleanupExpiredPeers() {
         const now = new Date();
         Object.keys(this.store).forEach(userId => {
