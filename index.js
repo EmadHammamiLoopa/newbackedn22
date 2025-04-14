@@ -10,6 +10,7 @@ const session = require('express-session');
 const passport = require('./routes/passport');  // Adjust the path to your passport configuration
 const schedule = require('node-schedule');
 const Comment = require("./app/models/Comment")
+const peerStore = require('./app/utils/peerStorage'); // ✅ Use shared storage
 
 // import routes
 const authRoutes = require('./routes/auth');
@@ -87,7 +88,7 @@ peerServer.on("connection", (client) => {
   console.log(`✅ New peer connected with ID: ${client.getId()}`);
 
   const userId = client.getId().split('-')[0]; // Extract userId from PeerJS ID
-  activePeers[userId] = client.getId(); // ✅ Store Peer ID in shared storage
+  peerStore.set(userId, client.getId());
 
   console.log(`📝 Stored peerId: ${client.getId()} for userId: ${userId}`);
 });
@@ -95,12 +96,12 @@ peerServer.on("connection", (client) => {
 peerServer.on("disconnect", (client) => {
   console.log(`❌ Peer disconnected: ${client.getId()}`);
 
-  const userId = Object.keys(activePeers).find(key => activePeers[key] === client.getId());
-  if (userId) {
-      delete activePeers[userId];  // ✅ Remove from shared storage
-      console.log(`🗑️ Removed peerId for user: ${userId}`);
-  }
+  const userId = client.getId().split('-')[0];
+  console.log(`🗑️ Peer disconnected: ${userId} - Keeping peer ID in DB for 2 mins`);
+
+  
 });
+
 
 
 schedule.scheduleJob('0 * * * *', removeExpiredMedia);  // Runs every hour

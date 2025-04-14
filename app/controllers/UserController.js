@@ -734,13 +734,13 @@ exports.getUsers = async (req, res) => {
 
             // Return response with users
             console.log("Final response:", { users: setOnlineUsers(allUsers), more: hasMoreUsers(allUsers, limit, page), isGlobalSearch });
-            return Response.sendResponse(res, { users: setOnlineUsers(allUsers), more: hasMoreUsers(allUsers, limit, page) });
+            return Response.sendResponse(res, { users: setOnlineUsers(allUsers), more: hasMoreUsers(allUsers, limit, page),isGlobalSearch  });
 
         } else {
             // Handle random user fetching logic for non-'near' type
             let randomUsers = await findRandomUsers(req, filter, limit);
             console.log("Final response:", { users: setOnlineUsers(randomUsers), more: hasMoreUsers(randomUsers, limit, page), isGlobalSearch });
-            return Response.sendResponse(res, { users: setOnlineUsers(randomUsers), more: hasMoreUsers(randomUsers, limit, page) });
+            return Response.sendResponse(res, { users: setOnlineUsers(randomUsers), more: hasMoreUsers(randomUsers, limit, page),isGlobalSearch });
         }
 
     } catch (err) {
@@ -885,6 +885,7 @@ function getUserSelectFields(req) {
         randomVisible: 1,
         ageVisible: 1,
         loggedIn: 1,
+        online: 1,
         visitProfile: 1,
         salt: 1,
         hashed_password: 1,
@@ -951,6 +952,7 @@ exports.getUserProfile = async (req, res) => {
                 randomVisible: 1,
                 ageVisible: 1,
                 loggedIn: 1,
+                online: 1,
                 visitProfile: 1,
                 lastSeen: 1,
                 aboutMe: 1,
