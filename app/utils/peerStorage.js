@@ -3,25 +3,17 @@ const Peer = require('../models/Peer');
 class PeerStore {
   async set(userId, peerId) {
     try {
-      const existing = await Peer.findOne({ userId });
-  
-      if (!existing) {
-        await Peer.create({ userId, peerId, lastUpdated: new Date() });
-        console.log(`✅ Created new peer record for userId: ${userId}`);
-      } else {
-        // Only update lastUpdated if peerId is unchanged
-        if (existing.peerId === peerId) {
-          existing.lastUpdated = new Date();
-          await existing.save();
-          console.log(`⏱️ Updated lastSeen for peerId of userId: ${userId}`);
-        } else {
-          console.log(`⚠️ Ignoring different peerId for existing user ${userId}`);
-        }
-      }
+      await Peer.updateOne(
+        { userId },
+        { peerId, lastUpdated: new Date() },
+        { upsert: true } // ✅ ensures record creation if it doesn’t exist yet
+      );
+      console.log(`✅ Peer ID updated for userId: ${userId}`);
     } catch (err) {
       console.error("❌ Failed to store peerId in DB:", err);
     }
   }
+  
   
 
   async get(userId) {
