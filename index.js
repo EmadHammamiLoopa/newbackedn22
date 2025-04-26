@@ -78,20 +78,24 @@ const io = require('socket.io')(http, {
     credentials: true // ✅ Allow credentials for WebSocket requests
   }
 });
+helpers.init(io);
+app.set('io', io);
+module.exports.io = io;   
+const { sendNotification, notifyPeerNeeded } = helpers;   // now both are defined
 
 const { ExpressPeerServer } = require('peer');
 const peerServer = ExpressPeerServer(http, {
     debug: true
 });
-
 peerServer.on("connection", (client) => {
   console.log(`✅ New peer connected with ID: ${client.getId()}`);
 
   const userId = client.getId().split('-')[0]; // Extract userId from PeerJS ID
+// Push peerId + refresh ttl (expiresAt = now + 5 min)
   peerStore.set(userId, client.getId());
-
   console.log(`📝 Stored peerId: ${client.getId()} for userId: ${userId}`);
 });
+
 
 peerServer.on("disconnect", (client) => {
   console.log(`❌ Peer disconnected: ${client.getId()}`);
@@ -213,6 +217,17 @@ io.sockets.on('connection', (socket) => {
     console.warn("⚠️ No userId provided in handshake query.");
 }
 
+/**
+ * Presence – the mobile app emits this right after it finishes PeerJS.init()
+ *   socket.emit('online', { userId, peerId })
+ */
+socket.on('online', async ({ userId: u, peerId }) => {
+    if (!u || !peerId) return;
+    connectedUsers[u] = socket.id;            // book‑keep
+   await peerStore.set(u, peerId);           // refresh doc + ttl
+   io.to(u).emit('online-confirmed', { peerId });
+  });
+
 
   socket.onAny((event, ...args) => {
     console.log(`📢 WebSocket Event Received: ${event}`, args);
@@ -247,8 +262,8 @@ socket.on('disconnect', async () => {
 
 
 
-  require('./app/sockets/chat')(io, socket);
-  require('./app/sockets/video')(io, socket);
+require('./app/sockets/chat')(io, socket, connectedUsers);
+require('./app/sockets/video')(io, socket, connectedUsers);
 });
 
 // Serve the Cordova application for the browser platform

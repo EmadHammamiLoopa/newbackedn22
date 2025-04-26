@@ -2,16 +2,15 @@ const Peer = require('../models/Peer');
 
 class PeerStore {
   async set(userId, peerId) {
-    try {
-      await Peer.updateOne(
-        { userId },
-        { peerId, lastUpdated: new Date() },
-        { upsert: true } // ✅ ensures record creation if it doesn’t exist yet
-      );
-      console.log(`✅ Peer ID updated for userId: ${userId}`);
-    } catch (err) {
-      console.error("❌ Failed to store peerId in DB:", err);
-    }
+    await Peer.updateOne(
+      { userId },
+      {
+        peerId,
+        lastUpdated: new Date(),
+        expiresAt:   new Date(Date.now() + 5*60_000)   // refresh ttl
+      },
+      { upsert: true }
+    );
   }
   
   

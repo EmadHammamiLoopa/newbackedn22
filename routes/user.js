@@ -13,6 +13,7 @@ const Job = require("../app/models//Job");
 const Service = require("../app/models//Service");
 const Subscription = require('../app/models/Subscription'); // Adjust the path to your Subscription model
 const peerStore = require('.././app/utils/peerStorage');
+const { notifyPeerNeeded } = require('../app/helpers');   // <-- import once
 
 const {
     allUsers,
@@ -67,88 +68,57 @@ router.post('/', [form, requireSignin, isSuperAdmin, userStoreValidator], storeU
 
 /**
  * ✅ Store Peer ID when a user connects
- */
-router.post('/:userId/peer', async (req, res) => {
-    const userId = req.params.userId;
-    const { peerId } = req.body;
+ */router.post('/:userId/peer', async (req, res) => {
+  const { userId } = req.params;
+  const { peerId }  = req.body;
 
-    console.log("📥 Incoming peer registration:", { userId, peerId });
+  if (!peerId) {
+    return res.status(400).json({ success:false, message:'peerId is required' });
+  }
 
-    if (!peerId) {
-        return res.status(400).json({
-            success: false,
-            message: "peerId is required."
-        });
-    }
+  try {
+    await peerStore.set(userId, peerId);                // <-- upsert + ttl refresh
+    console.log(`✅  stored peerId for ${userId}: ${peerId}`);
 
-    try {
-        await peerStore.set(userId, peerId);
-        console.log(`✅ Stored peerId for ${userId}: ${peerId}`);
-        return res.json({
-            success: true,
-            message: "Peer ID stored successfully.",
-            userId,
-            peerId
-        });
-    } catch (err) {
-        console.error("❌ Error storing peerId:", err);
-        return res.status(500).json({
-            success: false,
-            message: "Failed to store peer ID.",
-            error: err.message
-        });
-    }
+    return res.json({
+      success : true,
+      message : 'Peer ID stored',
+      userId,
+      peerId
+    });
+  } catch (err) {
+    console.error('❌  peerStore.set failed:', err);
+    return res.status(500).json({ success:false, message:'DB error', error:err.message });
+  }
 });
 
 
-/**
- * ✅ Get Peer ID for user
+/* ───────────────────────── GET   /:userId/peer ──────────────────────────
+ * The caller hits this to find out whether the callee is online.
+ *  – If a fresh record exists      → return {peerId, expires}
+ *  – If missing/expired            → nudge callee + return {peerId:null}
  */
-router.get('/:userId/peer', async (req, res) => {
-    const userId = req.params.userId;
+router.get('/:userId/peer', async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const record     = await peerStore.get(userId);   // null | { peerId, expiresAt }
 
-    try {
-        const peerData = await peerStore.get(userId);
+    if (!record || record.expiresAt < Date.now()) {
+      notifyPeerNeeded(userId);                       // wake the callee
 
-        console.log("📦 Peer lookup:", {
-            userId,
-            peerData
-        });
-
-        const isPeerActive = peerData &&
-            (Date.now() - new Date(peerData.lastUpdated).getTime()) < 2 * 60 * 1000;
-
-        if (!isPeerActive) {
-            if (peerData) {
-                console.log(`⌛ Peer ID expired for ${userId}`);
-                await peerStore.delete(userId);
-            }
-
-            return res.status(404).json({
-                success: false,
-                message: "User is not online or peerId not found.",
-                userId
-            });
-        }
-
-        console.log(`✅ Returning peerId for ${userId}: ${peerData.peerId}`);
-        return res.json({
-            success: true,
-            message: "Peer ID retrieved successfully.",
-            userId,
-            peerId: peerData.peerId
-        });
-
-    } catch (err) {
-        console.error("❌ Error retrieving peerId:", err);
-        return res.status(500).json({
-            success: false,
-            message: "Failed to retrieve peer ID.",
-            error: err.message
-        });
+      return res.json({ success:true, peerId:null, expires:0 });
     }
-});
 
+    return res.json({
+      success : true,
+      peerId  : record.peerId,
+      expires : record.expiresAt.getTime()
+    });
+  } catch (err) {
+    /* Let your global error‑handler deal with it */
+    next(err);
+  }
+});
 
 /**
  * ✅ Delete Peer ID
