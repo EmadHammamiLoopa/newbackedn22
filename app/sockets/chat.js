@@ -5,7 +5,7 @@ let { connectedUsers, sendNotification, userSocketId } = require('./../helpers')
 const mongoose = require("mongoose");
 const User = require("../models/User");
 
-module.exports = (io, socket) => {
+module.exports = (io, socket,connectedUsers) => {
     socket.on('disconnect', function() {
         console.log(`❌ Disconnected: User ${socket.userId || 'Unknown'}, Socket ID: ${socket.id}`);
 
