@@ -40,6 +40,7 @@ const Job = require('./app/models/Job');
 const Message = require('./app/models/Message');
 const Post = require('./app/models/Post');
 const { deleteUser } = require('./app/controllers/UserController');
+const helpers = require('./app/helpers');
 
 require('dotenv').config();
 const app = express();
