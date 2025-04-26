@@ -37,7 +37,6 @@ const Follow = require('./app/models/Follow');
 const Channel = require('./app/models/Channel');
 const Service = require('./app/models/Service');
 const Job = require('./app/models/Job');
-const { sendNotification } = require('./app/helpers');
 const Message = require('./app/models/Message');
 const Post = require('./app/models/Post');
 const { deleteUser } = require('./app/controllers/UserController');
