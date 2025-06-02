@@ -6,6 +6,11 @@ const Message = require('../models/Message');
 const User = require('../models/User');
 const Response = require('./Response');
 
+const connectedUserIds = connectedUsers 
+  ? Object.keys(connectedUsers).map(id => new mongoose.Types.ObjectId(id)) 
+  : [];
+
+  
 exports.indexMessages = async (req, res) => {
     console.log("hereeeeeeeeeeeeeeeeeeeee");
 
@@ -86,7 +91,7 @@ exports.getUsersMessages = async (req, res) => {
                 id: "$_id",
                 online: {
                     $cond: [
-                        { $in: ["$_id", Object.keys(connectedUsers).map(id => new mongoose.Types.ObjectId(id))] },
+                        { $in: ["$_id", connectedUserIds] },
                         true,
                         false,
                     ],
