@@ -123,36 +123,24 @@ router.get('/:userId/peer', async (req, res, next) => {
 /**
  * ✅ Delete Peer ID
  */
-router.delete('/:userId/peer', async (req, res) => {
-    const userId = req.params.userId;
+router.get('/:userId/peer', async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const record = await peerStore.get(userId); // { peerId, lastUpdated } | null
 
-    try {
-        const peer = await peerStore.get(userId);
-
-        if (!peer) {
-            return res.status(404).json({
-                success: false,
-                message: "Peer ID not found.",
-                userId
-            });
-        }
-
-        await peerStore.delete(userId);
-        console.log(`❌ Removed peerId for userId: ${userId}`);
-        return res.json({
-            success: true,
-            message: "Peer ID removed successfully.",
-            userId
-        });
-
-    } catch (err) {
-        console.error("❌ Error deleting peerId:", err);
-        return res.status(500).json({
-            success: false,
-            message: "Failed to delete peer ID.",
-            error: err.message
-        });
+    if (!record) {
+      notifyPeerNeeded(userId); // wake the callee via socket or other means
+      return res.json({ success: true, peerId: null });
     }
+
+    return res.json({
+      success: true,
+      peerId: record.peerId
+    });
+
+  } catch (err) {
+    next(err); // pass to global error handler
+  }
 });
 
 
