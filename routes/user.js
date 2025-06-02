@@ -101,31 +101,6 @@ router.post('/', [form, requireSignin, isSuperAdmin, userStoreValidator], storeU
 router.get('/:userId/peer', async (req, res, next) => {
   try {
     const { userId } = req.params;
-    const record     = await peerStore.get(userId);   // null | { peerId, expiresAt }
-
-    if (!record || record.expiresAt < Date.now()) {
-      notifyPeerNeeded(userId);                       // wake the callee
-
-      return res.json({ success:true, peerId:null, expires:0 });
-    }
-
-    return res.json({
-      success : true,
-      peerId  : record.peerId,
-      expires : record.expiresAt.getTime()
-    });
-  } catch (err) {
-    /* Let your global error‑handler deal with it */
-    next(err);
-  }
-});
-
-/**
- * ✅ Delete Peer ID
- */
-router.get('/:userId/peer', async (req, res, next) => {
-  try {
-    const { userId } = req.params;
     const record = await peerStore.get(userId); // { peerId, lastUpdated } | null
 
     if (!record) {
@@ -141,6 +116,42 @@ router.get('/:userId/peer', async (req, res, next) => {
   } catch (err) {
     next(err); // pass to global error handler
   }
+});
+
+
+/**
+ * ✅ Delete Peer ID
+ */
+router.delete('/:userId/peer', async (req, res) => {
+    const userId = req.params.userId;
+
+    try {
+        const peer = await peerStore.get(userId);
+
+        if (!peer) {
+            return res.status(404).json({
+                success: false,
+                message: "Peer ID not found.",
+                userId
+            });
+        }
+
+        await peerStore.delete(userId);
+        console.log(`❌ Removed peerId for userId: ${userId}`);
+        return res.json({
+            success: true,
+            message: "Peer ID removed successfully.",
+            userId
+        });
+
+    } catch (err) {
+        console.error("❌ Error deleting peerId:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to delete peer ID.",
+            error: err.message
+        });
+    }
 });
 
 

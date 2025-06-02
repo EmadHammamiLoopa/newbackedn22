@@ -257,7 +257,7 @@ socket.on('disconnect', async () => {
       } catch (err) {
           console.error('❌ Error setting user offline:', err);
       }
-  }, 5000); // ✅ Wait 5 seconds before marking offline
+  }, 7000); // ✅ Wait 5 seconds before marking offline
 });
 
 
