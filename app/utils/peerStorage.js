@@ -2,23 +2,28 @@ const Peer = require('../models/Peer');
 
 class PeerStore {
   async set(userId, peerId) {
-    await Peer.updateOne(
-      { userId },
-      {
-        peerId,
-        lastUpdated: new Date(),
-        expiresAt:   new Date(Date.now() + 5*60_000)   // refresh ttl
-      },
-      { upsert: true }
-    );
+    try {
+      await Peer.updateOne(
+        { userId },
+        {
+          $set: {
+            peerId,
+            lastUpdated: new Date()
+          }
+        },
+        {
+          upsert: true,
+          setDefaultsOnInsert: true
+        }
+      );
+    } catch (err) {
+      console.error("❌ Failed to set peerId in DB:", err);
+    }
   }
-  
-  
 
   async get(userId) {
     try {
-      const record = await Peer.findOne({ userId });
-      return record;
+      return await Peer.findOne({ userId });
     } catch (err) {
       console.error("❌ Failed to fetch peerId from DB:", err);
       return null;
@@ -34,7 +39,7 @@ class PeerStore {
     }
   }
 
-  // Cleanup expired peer records older than 2 minutes
+  // Cleanup peers that haven't updated in the last 2 minutes
   async cleanupExpiredPeers() {
     const expirationTime = new Date(Date.now() - 2 * 60 * 1000);
     try {
@@ -47,10 +52,7 @@ class PeerStore {
     }
   }
 
-  // Optional: Automatically run cleanup every 60 seconds
-  startAutoCleanup() {
-    setInterval(() => this.cleanupExpiredPeers(), 60000);
-  }
+
 }
 
 module.exports = new PeerStore();
