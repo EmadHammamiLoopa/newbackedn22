@@ -1,126 +1,124 @@
-const Message = require("../models/Message");
-const path = require('path');
-const fs = require('fs');
-let { connectedUsers, sendNotification, userSocketId } = require('./../helpers');
-const mongoose = require("mongoose");
-const User = require("../models/User");
+// app/sockets/chat.js
+// ────────────────────────────────────────────────────────────────────
+const Message = require('../models/Message');
+const path     = require('path');
+const fs       = require('fs');
+const mongoose = require('mongoose');
+const User     = require('../models/User');
 
-module.exports = (io, socket,connectedUsers) => {
-    socket.on('disconnect', function() {
-        console.log(`❌ Disconnected: User ${socket.userId || 'Unknown'}, Socket ID: ${socket.id}`);
+/* helpers:
+   ─ connectedUsers(socketServer) → returns a *function* that lists users
+   ─ sendNotification(...)
+   ─ userSocketId(id) → socketId
+*/
+const {
+  connectedUsers: listOnline,      // ✨ keep helper-function under a new name
+  sendNotification,
+  userSocketId
+} = require('./../helpers');
 
-        // Remove the user from tracking if userId exists
-        if (socket.userId && connectedUsers[socket.userId]) {
-            delete connectedUsers[socket.userId];
-            console.log(`🛑 Removed User ${socket.userId} from connected users.`);
-        }
+/**
+ * Exported socket-handler
+ * @param {import('socket.io').Server} io         – socket.io server
+ * @param {import('socket.io').Socket} socket     – this client socket
+ * @param {Object.<string,string>}     userMap    – userId → socketId map (shared)
+ */
+module.exports = (io, socket, userMap) => {
 
-        // Log updated connected users
-        console.log("🔍 Updated Connected Users List:", Object.keys(connectedUsers).length, "users online.");
-    });
+  /* ───────────── connection / disconnection ───────────── */
 
+  socket.on('disconnect', () => {
+    console.log(`❌ Disconnected: user ${socket.userId || 'Unknown'} – ${socket.id}`);
 
-    socket.on('disconnect-user', function() {
-        socket.disconnect();
-        console.log('---------------------');
-        console.log(connectedUsers(io.sockets));
-        console.log(`user disconnected (${Object.keys(connectedUsers(io.sockets)).length} connected)`);
-    });
+    if (socket.userId && userMap[socket.userId]) {
+      delete userMap[socket.userId];
+      console.log(`🗑️  Removed ${socket.userId} from userMap`);
+    }
+    console.log('🔍 Online users:', Object.keys(userMap).length);
+  });
 
-    socket.on('connect-user', (user_id) => {
-        if (!user_id) {
-            console.warn("⚠️ connect-user event received without user_id!");
-            return;
-        }
-    
-        socket.username = user_id;
-        socket.userId = user_id; // Store user ID in socket object
-    
-        console.log(`✅ User connected: ${user_id}, Socket ID: ${socket.id}`);
-    
-        // Store the socket ID for the user
-        connectedUsers[user_id] = socket.id; // 🔥 Ensure correct mapping
-    
-        console.log("🔍 Connected Users List:", connectedUsers);
-    });
-    
-    
+  socket.on('disconnect-user', () => {
+    socket.disconnect(true);
+    console.log('---------------------');
+    console.log(listOnline(io.sockets));                                 // helper-function
+    console.log(`user disconnected (${Object.keys(listOnline(io.sockets)).length} connected)`);
+  });
 
-    socket.on('send-message', async (msg, image, ind) => {
-        try {
-            console.log(`📢 WebSocket Event Received: send-message`, msg);
-    
-            msg.from = msg.from || msg._from;
-            msg.to = msg.to || msg._to;
-            msg.text = msg.text || msg._text;
-    
-            if (!msg || !msg.from || !msg.to || !msg.text) {  // Ensure text exists
-                console.error("❌ Invalid message format! Missing 'from', 'to', or 'text'.", msg);
-                return;
-            }
-    
-            console.log(`📩 Received message from ${msg.from} to ${msg.to}`);
-    
-            const sender = await User.findById(msg.from);
-            const receiver = await User.findById(msg.to);
-            if (!sender || !receiver) {
-                console.error(`❌ Sender or Receiver not found!`);
-                return;
-            }
-    
-            const messageData = {
-                text: msg.text,  // Ensure text is always included
-                from: new mongoose.Types.ObjectId(msg.from),
-                to: new mongoose.Types.ObjectId(msg.to),
-                image: null,
-                state: 'sent',
-                type: msg.type || 'friend',
-                productId: msg.productId || null
-            };
-    
-            if (image && typeof image === 'string' && image.startsWith('data:image')) {
-                const photoName = `${msg.from}_${msg.to}_${new Date().getTime()}.png`;
-                const photoPath = path.join(__dirname, `./../../public/chats/${photoName}`);
-                const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
-                fs.writeFileSync(photoPath, Buffer.from(base64Data, 'base64'));
-                messageData.image = { path: `/chats/${photoName}`, type: 'png' };
-            }
-    
-            const message = new Message(messageData);
-            const savedMessage = await message.save().catch(err => console.error("❌ MongoDB Save Error:", err));
-            console.log("✅ Message saved:", savedMessage);
-    
-            // Add the message to the sender's messages array
-            await User.findByIdAndUpdate(msg.from, {
-                $push: { messages: savedMessage._id }
-            });
-    
-            // Add the message to the receiver's messages array
-            await User.findByIdAndUpdate(msg.to, {
-                $push: { messages: savedMessage._id }
-            });
-    
-            console.log("✅ Message added to sender and receiver's messages arrays");
-    
-            const toSocketId = connectedUsers[msg.to];
-            const fromSocketId = connectedUsers[msg.from];
-    
-            if (toSocketId) {
-                io.to(toSocketId).emit('new-message', savedMessage);
-                console.log(`✅ Sent to receiver: ${toSocketId}`);
-            } else {
-                console.warn(`⚠️ User ${msg.to} is not online. Message saved but not delivered.`);
-            }
-    
-            if (fromSocketId) {
-                io.to(fromSocketId).emit('message-sent', savedMessage, ind);
-                console.log(`✅ Sent back confirmation to sender: ${fromSocketId}`);
-            }
-    
-        } catch (err) {
-            console.error('❌ Error in send-message event:', err);
-        }
-    });
-    
-    
-}
+  socket.on('connect-user', (user_id) => {
+    if (!user_id) {
+      console.warn('⚠️ connect-user without user_id');
+      return;
+    }
+
+    socket.userId = user_id;
+    userMap[user_id] = socket.id;                                        // record
+
+    console.log(`✅ User ${user_id} connected: ${socket.id}`);
+    console.log('🔍 userMap →', userMap);
+  });
+
+  /* ───────────── chat messages ───────────── */
+
+  socket.on('send-message', async (msg, image, ind) => {
+    try {
+      console.log('📢 send-message:', msg);
+
+      // normalise field names coming from mobile app
+      msg = {
+        from  : msg.from  || msg._from,
+        to    : msg.to    || msg._to,
+        text  : msg.text  || msg._text,
+        type  : msg.type  || 'friend',
+        productId : msg.productId || null
+      };
+
+      if (!msg.from || !msg.to || !msg.text) {
+        console.error('❌ Invalid message format', msg);
+        return;
+      }
+
+      /* ─── persist in DB ─── */
+      const messageData = {
+        text : msg.text,
+        from : new mongoose.Types.ObjectId(msg.from),
+        to   : new mongoose.Types.ObjectId(msg.to),
+        image: null,
+        state: 'sent',
+        type : msg.type,
+        productId: msg.productId
+      };
+
+      if (image && typeof image === 'string' && image.startsWith('data:image')) {
+        const photoName = `${msg.from}_${msg.to}_${Date.now()}.png`;
+        const photoPath = path.join(__dirname, '../../public/chats', photoName);
+        fs.writeFileSync(photoPath, Buffer.from(image.split(',')[1], 'base64'));
+        messageData.image = { path: `/chats/${photoName}`, type: 'png' };
+      }
+
+      const savedMessage = await new Message(messageData).save();
+      await User.updateMany(
+        { _id: { $in: [msg.from, msg.to] } },
+        { $push: { messages: savedMessage._id } }
+      );
+
+      /* ─── deliver in real-time ─── */
+      const toSocket   = userMap[msg.to];
+      const fromSocket = userMap[msg.from];
+
+      if (toSocket) {
+        io.to(toSocket).emit('new-message',  savedMessage);
+        console.log(`✅ delivered to receiver (${toSocket})`);
+      } else {
+        console.warn(`⚠️ receiver ${msg.to} offline – stored only`);
+      }
+
+      if (fromSocket) {
+        io.to(fromSocket).emit('message-sent', savedMessage, ind);
+      }
+
+    } catch (err) {
+      console.error('❌ send-message error:', err);
+    }
+  });
+
+};
