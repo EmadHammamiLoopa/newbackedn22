@@ -51,6 +51,7 @@ const { userById, isNotBlocked } = require('../app/middlewares/user');
 const { userUpdateValidator, updateEmailValidator, updatePasswordValidator, userStoreValidator, userDashUpdateValidator } = require('../app/middlewares/validators/userValidator');
 const router = express.Router();
 const multer = require('multer');
+const Peer = require('../app/models/Peer');   // ← add this
 
 const upload = require('../middlewares/upload'); // Adjust the path if necessary
 
@@ -154,7 +155,21 @@ router.delete('/:userId/peer', async (req, res) => {
     }
 });
 
+router.patch('/:userId/peer/heartbeat', async (req, res) => {
+  const { userId } = req.params;
 
+  try {
+    await Peer.updateOne(
+      { userId },
+      { $set: { lastUpdated: new Date() } }
+    );
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('❌ heartbeat error:', err);
+    return res.status(500).json({ success: false, message: 'DB error' });
+  }
+});
 
 router.get('/dash/:userId', [requireSignin, isAdmin], showUserDash);
 router.put('/dash/:userId', [form, requireSignin, isSuperAdmin, userDashUpdateValidator], updateUserDash);
