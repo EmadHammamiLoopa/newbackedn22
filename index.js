@@ -46,7 +46,7 @@ require('dotenv').config();
 const app = express();
 app.use(cors({
   origin: ['https://newbackedn22.onrender.com', 'http://localhost:3300', 'https://localhost'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
