@@ -196,70 +196,75 @@ function listRoutes(app) {
 listRoutes(app);
 app.use(invalidTokenError);
 app.use(notFoundError);
-const connectedUsers = {}; // ✅ Declare connectedUsers as an empty object
+const connectedUsers = {}; // userId → socket.id
+const socketUserMap = {};  // socket.id → userId
 
 io.sockets.on('connection', (socket) => {
-  console.log('connection');
-  const userId = socket.handshake.query.userId; // Adjust based on your implementation
+    console.log('⚡ New WebSocket connection:', socket.id);
 
-  // Set user as online when they connect
-  if (userId) {
-    connectedUsers[userId] = socket.id;  // ✅ Add user to connectedUsers
-    console.log(`✅ User ${userId} added to connectedUsers with socket ID: ${socket.id}`);
+    const userId = socket.handshake.query.userId;
 
-    // Set user as online when they connect
-    User.findById(userId).then(user => {
-        if (user) {
-            user.setOnline();
-        }
+    if (userId) {
+        connectedUsers[userId] = socket.id;
+        socketUserMap[socket.id] = userId;
+
+        console.log(`✅ User ${userId} connected with socket ID ${socket.id}`);
+
+        // Optional: Set user online in DB
+        User.findById(userId).then(user => {
+            if (user) user.setOnline();
+        });
+    } else {
+        console.warn("⚠️ No userId provided in handshake query.");
+    }
+
+    // 📡 Presence tracking after PeerJS.init()
+    socket.on('online', async ({ userId: u, peerId }) => {
+        if (!u || !peerId) return;
+        connectedUsers[u] = socket.id;
+        socketUserMap[socket.id] = u;
+
+        await peerStore.set(u, peerId);
+        io.to(socket.id).emit('online-confirmed', { peerId });
+
+        console.log(`✅ Presence updated for ${u}, peerId: ${peerId}`);
     });
-} else {
-    console.warn("⚠️ No userId provided in handshake query.");
-}
 
-/**
- * Presence – the mobile app emits this right after it finishes PeerJS.init()
- *   socket.emit('online', { userId, peerId })
- */
-socket.on('online', async ({ userId: u, peerId }) => {
-    if (!u || !peerId) return;
-    connectedUsers[u] = socket.id;            // book‑keep
-   await peerStore.set(u, peerId);           // refresh doc + ttl
-   io.to(u).emit('online-confirmed', { peerId });
-  });
+    // 📢 Debug all events
+    socket.onAny((event, ...args) => {
+        console.log(`📢 WebSocket Event Received: ${event}`, args);
+    });
 
+    // 🔌 Disconnect handler
+    socket.on('disconnect', async () => {
+        const uid = socketUserMap[socket.id] || userId || "Unknown";
+        console.log(`❌ Disconnected: User ${uid}, Socket ID: ${socket.id}`);
 
-  socket.onAny((event, ...args) => {
-    console.log(`📢 WebSocket Event Received: ${event}`, args);
-});
+        setTimeout(async () => {
+            // If the user reconnected with a different socket, skip marking offline
+            if (connectedUsers[uid] && connectedUsers[uid] !== socket.id) {
+                console.log(`🔁 User ${uid} already reconnected with a new socket, skip offline.`);
+                return;
+            }
 
-socket.on('disconnect', async () => {
-  console.log(`❌ Disconnected: User ${userId || "Unknown"}, Socket ID: ${socket.id}`);
+            delete connectedUsers[uid];
+            delete socketUserMap[socket.id];
 
-  // Wait for a short time before marking the user offline (prevents refresh issues)
-  setTimeout(async () => {
-      if (connectedUsers[userId]) {
-          console.log(`🔄 User ${userId} reconnected quickly, skipping offline update.`);
-          return; // The user has already reconnected
-      }
+            console.log(`🗑️ Cleaned up disconnected user ${uid}`);
 
-      try {
-          delete connectedUsers[userId]; // ✅ Remove from active users list
-          console.log(`❌ User ${userId} permanently removed from connectedUsers`);
-
-          const user = await User.findById(userId);
-          if (user) {
-              user.setOffline();
-              user.lastSeen = new Date();
-              await user.save();
-              console.log(`💤 User ${userId} marked as offline.`);
-          }
-      } catch (err) {
-          console.error('❌ Error setting user offline:', err);
-      }
-  }, 7000); // ✅ Wait 5 seconds before marking offline
-});
-
+            try {
+                const user = await User.findById(uid);
+                if (user) {
+                    user.setOffline();
+                    user.lastSeen = new Date();
+                    await user.save();
+                    console.log(`💤 User ${uid} marked as offline.`);
+                }
+            } catch (err) {
+                console.error('❌ Error during user disconnect cleanup:', err);
+            }
+        }, 7000); // 7 second delay to allow for quick reconnects
+    });
 
 
 require('./app/sockets/chat')(io, socket, connectedUsers);
