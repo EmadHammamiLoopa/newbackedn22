@@ -12,7 +12,7 @@ const User     = require('../models/User');
    ─ userSocketId(id) → socketId
 */
 const {
-  connectedUsers: listOnline,      // ✨ keep helper-function under a new name
+  connectedUsersMap: listOnline,      // ✨ keep helper-function under a new name
   sendNotification,
   userSocketId
 } = require('./../helpers');
